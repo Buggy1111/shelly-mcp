@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from shelly_mcp import __version__
+from shelly_mcp import __version__, discovery
 from shelly_mcp.app import get_registry, mcp, resolve_status
 from shelly_mcp.backends.base import BackendError
 
@@ -13,6 +13,24 @@ from shelly_mcp.backends.base import BackendError
 def shelly_version() -> dict[str, str]:
     """Return the shelly-mcp server version (health check)."""
     return {"name": "shelly-mcp", "version": __version__}
+
+
+@mcp.tool(annotations={"readOnlyHint": True, "openWorldHint": True})
+async def shelly_discover(timeout_s: float = 5.0, use_cloud: bool = True) -> dict[str, Any]:
+    """Discover Shelly devices on the LAN via mDNS, merged with the cloud account list.
+
+    ``timeout_s`` is the mDNS browse window. Set ``use_cloud=false`` to skip the cloud
+    list (LAN-only). Safe, read-only; returns lightweight identities (probe for detail).
+    """
+    mdns = await discovery.discover_mdns(timeout_s)
+    cloud = []
+    if use_cloud:
+        try:
+            cloud = await get_registry().list_devices()
+        except BackendError:
+            cloud = []
+    merged = discovery.merge_discovered(mdns, cloud)
+    return {"count": len(merged), "devices": [d.model_dump() for d in merged]}
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
