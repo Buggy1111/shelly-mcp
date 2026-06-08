@@ -1,0 +1,69 @@
+[project]
+name = "shelly-mcp"
+version = "0.1.0"
+description = "MCP server for the entire Shelly smart-home ecosystem (Gen1-Gen4 + BLU) — local-first, with cloud fallback. Unofficial community project."
+authors = [{ name = "Michal Bugy", email = "michalbugy12@gmail.com" }]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+keywords = ["shelly", "mcp", "model-context-protocol", "smart-home", "iot", "home-automation", "aioshelly"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Home Automation",
+    "Intended Audience :: Developers",
+]
+dependencies = [
+    "fastmcp>=2.3,<3",
+    "aioshelly>=12,<13",
+    "zeroconf>=0.132,<1",
+    "pydantic>=2.7,<3",
+    "pyyaml>=6,<7",
+    "aiohttp>=3.9,<4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8,<9",
+    "pytest-asyncio>=0.23,<1",
+    "ruff>=0.5,<1",
+    "mypy>=1.10,<2",
+    "types-pyyaml",
+]
+
+[project.scripts]
+shelly-mcp = "shelly_mcp.server:main"
+
+[project.urls]
+Homepage = "https://github.com/Buggy1111/shelly-mcp"
+Repository = "https://github.com/Buggy1111/shelly-mcp"
+Issues = "https://github.com/Buggy1111/shelly-mcp/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/shelly_mcp"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "S"]
+ignore = ["S101"]  # allow assert in tests
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_ignores = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
