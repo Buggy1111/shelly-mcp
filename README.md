@@ -38,6 +38,22 @@ Auto-discovery (mDNS) finds devices on your LAN. For named devices, multiple sub
 | Energy live + history | ✅ | ⚠️ live only |
 | Automation (schedules/scripts/webhooks/KVS) | ✅ | ❌ |
 
+## Tools, resources & prompts
+
+**Read (safe):** `shelly_discover` · `shelly_list_devices` · `shelly_get_info` · `shelly_get_status` (normalized) · `shelly_get_config` · `shelly_list_components` · `shelly_list_methods`
+
+**Control (audited):** `shelly_switch_set` · `shelly_switch_toggle` · `shelly_light_set` (RGBW/CCT/white) · `shelly_cover_move`
+
+**Energy:** `shelly_energy_live` · `shelly_energy_history`
+
+**Generic engine (total coverage):** `shelly_rpc` (read-only) · `shelly_rpc_write` (mutations, `confirm:true` + data-loss double-gate)
+
+**System / schedules (gated):** `shelly_system_reboot|update|set_auth` · `shelly_schedule_list|create|update|delete`
+
+**Resources:** `shelly://devices`, `shelly://device/{name}/status` — **Prompts:** `shelly_evening_scene`, `shelly_energy_report`, `shelly_diagnose`
+
+> **Safety:** reads are `readOnlyHint`; every mutation is audit-logged; the generic write tool and destructive system tools require explicit `confirm:true`, and irreversible methods (factory reset, wipe-all) need a second `i_understand_data_loss` gate — so even a hijacked LLM can't silently destroy a device.
+
 ## Docs
 
 Full design in [`docs/`](./docs/): overview, architecture (+ADRs), tool surface, security, config/deploy, build plan, and the complete Shelly API catalog.
