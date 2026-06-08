@@ -96,7 +96,7 @@ async def shelly_get_status(device: str, component: str | None = None) -> dict[s
     ident = await registry.require_identity(device)
     backend = await registry.get_backend(device)
     raw = await backend.get_status()
-    normalized = Normalizer.normalize_status(raw, ident.gen)
+    normalized = Normalizer.normalize_status(raw, ident.gen, backend=ident.backend or "local_rest")
 
     result: dict[str, Any] = {
         "device": ident.id,

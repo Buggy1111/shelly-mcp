@@ -85,12 +85,13 @@ async def test_get_status_gen2_normalized() -> None:
     assert "raw" in out
 
 
-async def test_get_status_gen1_converts_watt_minutes() -> None:
+async def test_get_status_gen1_cloud_energy_is_wh_passthrough() -> None:
+    # mycka is cloud-backed: Shelly Cloud already returns Gen1 total in Wh, so the
+    # tool must NOT ÷60. 548723 Wh == ~549 kWh, the real dishwasher reading (ADR-005).
     out = await shelly_get_status.fn(device="3ce90ed7c30e")
     assert out["gen"] == 1
     ch = out["channels"]["switch:0"]
-    # 548723 Wmin / 60 — the conversion surfaces all the way through the tool
-    assert abs(ch["energy_total_wh"] - 548723 / 60.0) < 1e-9
+    assert ch["energy_total_wh"] == 548723.0
 
 
 async def test_get_status_component_filter_narrows_and_scopes_raw() -> None:

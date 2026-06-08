@@ -5,11 +5,15 @@ This is where Gen1's ``relays[]/meters[]/lights[]/rollers[]`` arrays and Gen2+'s
 world (ADR-003). Tools and the LLM only ever see the canonical shapes from
 :mod:`shelly_mcp.models`; this module is the only place that knows the difference.
 
-Two unit conversions live here and *must not* leak elsewhere:
+Energy unit normalization lives here and *must not* leak elsewhere. The unit of
+Gen1 ``meters[].total`` is **transport-dependent** (verified against the real
+``mycka`` dishwasher plug — see ADR-005):
 
-* **Gen1 ``meters[].total`` is in Watt-minutes** — divide by 60 for Wh.
-* **Gen1 ``emeters[].total`` is already in Wh** — pass through.
-* **Gen2 ``aenergy.total`` is already in Wh** — pass through.
+* **Gen1 ``meters[].total`` over LOCAL ``/status`` is Watt-minutes** — ÷60 for Wh.
+* **Gen1 ``meters[].total`` over Shelly CLOUD is already Wh** — the cloud pre-divides
+  the device's native Watt-minute counter. Pass through.
+* **Gen1 ``emeters[].total`` is already Wh** (both transports) — pass through.
+* **Gen2 ``aenergy.total`` is already Wh** — pass through.
 
 A canonical field is ``None`` when the device genuinely can't report it; the raw
 component is always attached under ``raw`` so a power user is never blocked.
@@ -21,7 +25,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from shelly_mcp.models import ChannelState, CoverState, Generation, LightState
+from shelly_mcp.models import BackendKind, ChannelState, CoverState, Generation, LightState
 
 # Gen2 component-key prefixes we know how to fold into each canonical bucket.
 _GEN2_CHANNEL_PREFIXES = ("switch:", "pm1:")
@@ -78,6 +82,14 @@ def _as_list(value: Any) -> list[Any]:
     return value if isinstance(value, list) else []
 
 
+def _meter_total_to_wh(total: Any, *, already_wh: bool) -> float | None:
+    """Gen1 ``meters[].total`` → Wh. Watt-minutes over local; already Wh over cloud."""
+    value = _f(total)
+    if value is None:
+        return None
+    return value if already_wh else value / 60.0
+
+
 class Normalizer:
     """Stateless mapper. Static methods so they're trivially unit-testable in isolation."""
 
@@ -106,19 +118,20 @@ class Normalizer:
         meter: dict[str, Any] | None = None,
         *,
         device_temp_c: float | None = None,
+        meter_total_is_wh: bool = False,
     ) -> ChannelState:
         """Fold one Gen1 ``relays[i]`` + matching ``meters[i]`` into a ChannelState.
 
         Gen1 splits switching (``relays[]``) from metering (``meters[]``); we re-join
-        them by index. ``meters[].total`` is **Watt-minutes** → Wh by ÷60.
+        them by index. ``meters[].total`` is **Watt-minutes** locally (÷60), but the
+        cloud already returns Wh — pass ``meter_total_is_wh=True`` for cloud data.
         """
         relay = relay or {}
         meter = meter or {}
-        total_wmin = _f(meter.get("total"))
         return ChannelState(
             output=relay.get("ison") if isinstance(relay.get("ison"), bool) else None,
             power_w=_f(meter.get("power")),
-            energy_total_wh=total_wmin / 60.0 if total_wmin is not None else None,
+            energy_total_wh=_meter_total_to_wh(meter.get("total"), already_wh=meter_total_is_wh),
             voltage=_f(meter.get("voltage")),  # plain meters[] lack it → None
             current=_f(meter.get("current")),
             temperature_c=device_temp_c,
@@ -170,12 +183,17 @@ class Normalizer:
         )
 
     @staticmethod
-    def gen1_light(raw: dict[str, Any], meter: dict[str, Any] | None = None) -> LightState:
+    def gen1_light(
+        raw: dict[str, Any],
+        meter: dict[str, Any] | None = None,
+        *,
+        meter_total_is_wh: bool = False,
+    ) -> LightState:
         """Normalize a Gen1 ``lights[i]``.
 
         Colour mode reports brightness as ``gain`` (0-100) and a ``red/green/blue``
         triple; white mode uses ``brightness`` + ``temp`` (Kelvin). Power, if any,
-        comes from the parallel ``meters[i]`` entry.
+        comes from the parallel ``meters[i]`` entry (same Wmin/Wh transport rule).
         """
         mode = raw.get("mode")
         is_color = mode == "color"
@@ -183,7 +201,6 @@ class Normalizer:
         if any(k in raw for k in ("red", "green", "blue")):
             rgb = (_i(raw.get("red")) or 0, _i(raw.get("green")) or 0, _i(raw.get("blue")) or 0)
         meter = meter or {}
-        total_wmin = _f(meter.get("total"))
         return LightState(
             output=raw.get("ison") if isinstance(raw.get("ison"), bool) else None,
             brightness=_i(raw.get("gain")) if is_color else _i(raw.get("brightness")),
@@ -191,7 +208,7 @@ class Normalizer:
             white=_i(raw.get("white")),
             temp_k=None if is_color else _i(raw.get("temp")),
             power_w=_f(meter.get("power")),
-            energy_total_wh=total_wmin / 60.0 if total_wmin is not None else None,
+            energy_total_wh=_meter_total_to_wh(meter.get("total"), already_wh=meter_total_is_wh),
             raw=raw,
         )
 
@@ -220,11 +237,17 @@ class Normalizer:
 
     # ----------------------------------------------------------- whole-status fan
     @staticmethod
-    def normalize_status(status: dict[str, Any], gen: Generation) -> NormalizedStatus:
-        """Fold a full raw status payload into canonical buckets."""
+    def normalize_status(
+        status: dict[str, Any], gen: Generation, *, backend: BackendKind = "local_rest"
+    ) -> NormalizedStatus:
+        """Fold a full raw status payload into canonical buckets.
+
+        ``backend`` matters only for Gen1 energy units: a Gen1 ``meters[].total`` is
+        Watt-minutes over ``local_rest`` but already Wh over ``cloud`` (ADR-005).
+        """
         if gen.is_rpc:
             return Normalizer._normalize_gen2(status)
-        return Normalizer._normalize_gen1(status)
+        return Normalizer._normalize_gen1(status, meter_total_is_wh=backend == "cloud")
 
     @staticmethod
     def _normalize_gen2(status: dict[str, Any]) -> NormalizedStatus:
@@ -241,7 +264,9 @@ class Normalizer:
         return out
 
     @staticmethod
-    def _normalize_gen1(status: dict[str, Any]) -> NormalizedStatus:
+    def _normalize_gen1(
+        status: dict[str, Any], *, meter_total_is_wh: bool = False
+    ) -> NormalizedStatus:
         out = NormalizedStatus()
         tmp = status.get("tmp")
         if isinstance(tmp, dict):
@@ -268,11 +293,14 @@ class Normalizer:
             if f"switch:{i}" in out.channels:
                 continue
             out.channels[f"switch:{i}"] = Normalizer.gen1_channel(
-                at(relays, i), at(meters, i), device_temp_c=out.device_temp_c
+                at(relays, i), at(meters, i),
+                device_temp_c=out.device_temp_c, meter_total_is_wh=meter_total_is_wh,
             )
         for i, light in enumerate(lights):
             if isinstance(light, dict):
-                out.lights[f"light:{i}"] = Normalizer.gen1_light(light, at(meters, i))
+                out.lights[f"light:{i}"] = Normalizer.gen1_light(
+                    light, at(meters, i), meter_total_is_wh=meter_total_is_wh
+                )
         for i, roller in enumerate(rollers):
             if isinstance(roller, dict):
                 out.covers[f"cover:{i}"] = Normalizer.gen1_roller(roller)

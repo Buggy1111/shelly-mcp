@@ -202,3 +202,9 @@ Organized as **vertical slices** (a tool group keeps its logic together), not de
 **Decision:** stdio local server; credentials supplied by the user via config/env; no hosted endpoint.
 **Why:** Right security posture (no inbound surface), right distribution fit (Registry/Glama/PulseMCP all support stdio), matches the data-locality reality. Also why Smithery is a poor fit.
 **Consequences:** Each user runs it locally near their LAN. For Michal's WSL test-bed, local access needs WSL mirrored networking (see deploy doc).
+
+### ADR-005 — Gen1 energy unit is transport-dependent (Watt-minutes local, Wh cloud)
+**Context:** A Gen1 `meters[].total` does **not** carry the same unit on both transports. The official Gen1 API documents the device-native `/status` `meters[].total` as **Watt-minutes**. But Shelly Cloud pre-divides that counter and returns **Wh** in `device/status`. Captured real data confirms it: `mycka` (a SHPLG-S on the dishwasher) returns `total: 548723` over cloud, which is ~549 kWh as **Wh** — physically right for a dishwasher; as Watt-minutes it would be an implausible 9 kWh.
+**Decision:** `Normalizer.normalize_status(..., backend=...)` converts ÷60 only for `local_rest`; cloud data passes through as Wh. Canonical `energy_total_wh` is always Wh regardless of transport.
+**Why:** Normalization correctness can't depend on generation alone — the transport changes the unit. A naive always-÷60 would under-report cloud energy by 60×.
+**Consequences:** The Gen1 normalizer takes a `meter_total_is_wh` flag threaded from the backend kind. `emeters[]` (Gen1 EM/3EM) and Gen2 `aenergy.total` are Wh on both transports. To be re-verified live against the Shelly app once local backends land (M2) so the local Wmin path is confirmed end-to-end.

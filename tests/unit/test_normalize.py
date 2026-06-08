@@ -21,7 +21,7 @@ GEN2_SWITCH = {  # Plus Plug S — switch:0
     "source": "http",
 }
 GEN1_RELAY = {"ison": False, "source": "cloud", "overpower": False}
-GEN1_METER = {"power": 0.0, "total": 548723, "is_valid": True}  # total is Watt-minutes
+GEN1_METER = {"power": 0.0, "total": 548723, "is_valid": True}  # as returned by cloud (Wh)
 
 
 # ---------------------------------------------------------------- channels
@@ -38,14 +38,21 @@ def test_gen2_channel_energy_is_wh_passthrough() -> None:
     assert ch.raw == GEN2_SWITCH  # raw payload preserved for power users (Pydantic copies it)
 
 
-def test_gen1_channel_total_watt_minutes_to_wh() -> None:
-    ch = Normalizer.gen1_channel(GEN1_RELAY, GEN1_METER)
+def test_gen1_channel_local_total_is_watt_minutes() -> None:
+    # Local /status: the device's native counter is Watt-minutes → ÷60 for Wh.
+    # 32_923_380 Wmin / 60 == 548_723 Wh (== ~549 kWh, the real mycka dishwasher).
+    local_meter = {"power": 0.0, "total": 32_923_380}
+    ch = Normalizer.gen1_channel(GEN1_RELAY, local_meter)  # default: local
     assert ch.output is False
-    assert ch.power_w == 0.0
-    # 548723 Wmin / 60 == 9145.38... Wh — the conversion that must never leak elsewhere
     assert ch.energy_total_wh is not None
-    assert abs(ch.energy_total_wh - 548723 / 60.0) < 1e-9
+    assert abs(ch.energy_total_wh - 548_723.0) < 1e-6
     assert ch.source == "cloud"
+
+
+def test_gen1_channel_cloud_total_is_already_wh() -> None:
+    # Shelly Cloud pre-divides the Wmin counter → meters[].total arrives in Wh.
+    ch = Normalizer.gen1_channel(GEN1_RELAY, GEN1_METER, meter_total_is_wh=True)
+    assert ch.energy_total_wh == 548723.0  # passthrough, NOT ÷60
 
 
 def test_gen1_plain_meter_has_no_voltage_current() -> None:
@@ -185,3 +192,16 @@ def test_normalize_status_gen1_rollers_become_covers() -> None:
     ns = Normalizer.normalize_status(status, Generation.GEN1)
     assert ns.covers["cover:0"].state == "stopped"
     assert ns.covers["cover:0"].current_pos == 70
+
+
+def test_normalize_status_backend_decides_gen1_energy_unit() -> None:
+    status = {"relays": [GEN1_RELAY], "meters": [{"power": 0.0, "total": 600}]}
+    local = Normalizer.normalize_status(status, Generation.GEN1, backend="local_rest")
+    cloud = Normalizer.normalize_status(status, Generation.GEN1, backend="cloud")
+    assert local.channels["switch:0"].energy_total_wh == 10.0   # 600 Wmin / 60
+    assert cloud.channels["switch:0"].energy_total_wh == 600.0  # already Wh
+    # Gen2 is unaffected by transport (always Wh).
+    gen2 = {"switch:0": {"output": True, "aenergy": {"total": 600.0}}}
+    assert Normalizer.normalize_status(gen2, Generation.GEN2, backend="cloud").channels[
+        "switch:0"
+    ].energy_total_wh == 600.0
