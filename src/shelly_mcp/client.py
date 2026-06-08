@@ -1,34 +1,45 @@
 """DeviceRegistry — resolves a device name/id to a live backend, caches identity.
 
 This is the routing seam (the "which transport reaches this device" boundary). The
-intended policy is **local-first**: a device with a known LAN IP is reached over its
-local RPC/REST backend (fast, full-featured, can automate); Shelly Cloud is the
-off-LAN fallback (control + live status only). Local backends arrive in M2 once WSL
-mirrored networking is in place — until then the registry routes everything it can
-through cloud and raises an actionable error when only-local would be required.
+policy is **local-first**: a device configured with a LAN IP is reached over its local
+RPC/REST backend (fast, full-featured, can automate); Shelly Cloud is the off-LAN
+fallback (control + live status only). Routing picks the local backend by probing
+``GET /shelly`` (Gen2 reports ``gen``; Gen1 doesn't) and caches the result.
 
-The registry owns one shared :class:`CloudClient` for the whole account so the fleet
-shares a single 1 req/s rate budget.
+The registry owns one shared :class:`CloudClient` for the account (one 1 req/s budget)
+and one shared aiohttp session for all local HTTP.
 """
 
 from __future__ import annotations
 
-from shelly_mcp.backends.base import Backend, BackendError
+import aiohttp
+
+from shelly_mcp.backends.base import Backend, BackendError, DeviceUnreachable
 from shelly_mcp.backends.cloud import CloudBackend, CloudClient, identity_from_status
-from shelly_mcp.config import Config
+from shelly_mcp.backends.local_rest import Gen1RestBackend
+from shelly_mcp.backends.local_rpc import Gen2RpcBackend
+from shelly_mcp.config import Config, DeviceConfig
 from shelly_mcp.models import Capabilities, DeviceIdentity
 
 
 class DeviceRegistry:
     """Maps device identifiers to backends. One per server process."""
 
-    def __init__(self, config: Config, *, cloud_client: CloudClient | None = None) -> None:
+    def __init__(
+        self,
+        config: Config,
+        *,
+        cloud_client: CloudClient | None = None,
+        http_session: aiohttp.ClientSession | None = None,
+    ) -> None:
         self._config = config
         self._cloud = cloud_client  # injected in tests; otherwise built lazily from config
+        self._http = http_session  # shared session for local HTTP (injected in tests)
         self._identities: dict[str, DeviceIdentity] = {}
         self._caps: dict[str, Capabilities] = {}
         # Friendly-name -> cloud device id, learned from the fleet listing.
         self._name_to_id: dict[str, str] = {}
+        self._local_backends: dict[str, Backend] = {}
 
     # ------------------------------------------------------------------ cloud
     def _ensure_cloud(self) -> CloudClient:
@@ -71,16 +82,55 @@ class DeviceRegistry:
         """
         return dev_id if dev_id in self._config.devices else None
 
+    # ------------------------------------------------------------------ local
+    def _ensure_http(self) -> aiohttp.ClientSession:
+        if self._http is None or self._http.closed:
+            self._http = aiohttp.ClientSession()
+        return self._http
+
+    async def _probe_gen(self, ip: str, timeout_s: float) -> int:
+        """GET /shelly to branch Gen1 vs Gen2 (Gen2 reports ``gen``; Gen1 doesn't)."""
+        session = self._ensure_http()
+        try:
+            async with session.get(
+                f"http://{ip}/shelly", timeout=aiohttp.ClientTimeout(total=timeout_s)
+            ) as resp:
+                info = await resp.json()
+        except aiohttp.ClientError as exc:
+            raise DeviceUnreachable(f"Local device {ip} unreachable: {exc}") from exc
+        return int(info.get("gen", 1)) if isinstance(info, dict) else 1
+
+    async def _build_local(self, name: str, cfg: DeviceConfig) -> Backend:
+        """Build (and cache) the right local backend for a configured device with an ip."""
+        if name in self._local_backends:
+            return self._local_backends[name]
+        assert cfg.ip is not None  # only called when ip is set
+        timeout = self._config.defaults.timeout_s
+        gen = await self._probe_gen(cfg.ip, timeout)
+        session = self._ensure_http()
+        backend: Backend
+        if gen >= 2:
+            backend = Gen2RpcBackend(session, cfg.ip, password=cfg.password, timeout_s=timeout)
+        else:
+            backend = Gen1RestBackend(
+                session, cfg.ip, username=cfg.username, password=cfg.password, timeout_s=timeout
+            )
+        self._local_backends[name] = backend
+        return backend
+
     # --------------------------------------------------------------- resolve
     async def get_backend(self, device: str) -> Backend:
-        """Return a backend for ``device`` (a cloud id or a configured name).
+        """Return a backend for ``device`` — local-first, cloud fallback.
 
-        Cloud-only for now; the local-first routing lands with M2 local backends.
+        A device configured with a LAN ip is reached locally (full-featured); anything
+        else falls back to Shelly Cloud (control + status only).
         """
+        cfg = self._config.devices.get(device)
+        if cfg is not None and cfg.ip:
+            return await self._build_local(device, cfg)
         dev_id = self._name_to_id.get(device, device)
         client = self._ensure_cloud()
-        backend = CloudBackend(client, dev_id, self._friendly_name(dev_id))
-        return backend
+        return CloudBackend(client, dev_id, self._friendly_name(dev_id))
 
     async def identify(self, device: str) -> DeviceIdentity:
         """Resolve + probe a single device, caching its identity and capabilities."""
@@ -109,3 +159,5 @@ class DeviceRegistry:
     async def aclose(self) -> None:
         if self._cloud is not None:
             await self._cloud.aclose()
+        if self._http is not None and not self._http.closed:
+            await self._http.close()
