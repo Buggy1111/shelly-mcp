@@ -30,7 +30,9 @@ MYCKA = {
 class FakeCloudClient:
     def __init__(self) -> None:
         self.all_status_calls = 0
-        self.statuses = {"80646fe72f38": TELEVIZE, "3ce90ed7c30e": MYCKA}
+        self.statuses: dict[str, dict[str, Any]] = {
+            "80646fe72f38": TELEVIZE, "3ce90ed7c30e": MYCKA,
+        }
 
     async def all_status(self, *, show_info: bool = True) -> dict[str, Any]:
         self.all_status_calls += 1
