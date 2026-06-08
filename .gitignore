@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Secrets / local config — NEVER commit
+config.yaml
+config.local.yaml
+.env
+*.auth_key
+audit.jsonl
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
