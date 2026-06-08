@@ -9,10 +9,11 @@ from typing import Any
 
 import pytest
 
+from shelly_mcp.audit import AuditLog
 from shelly_mcp.client import DeviceRegistry
 from shelly_mcp.config import Config
-from shelly_mcp.server import (
-    set_registry,
+from shelly_mcp.server import set_audit, set_registry
+from shelly_mcp.tools.read import (
     shelly_get_info,
     shelly_get_status,
     shelly_list_components,
@@ -50,11 +51,13 @@ class FakeCloudClient:
 
 
 @pytest.fixture(autouse=True)
-def _wire_registry() -> Any:
+def _wire_registry(tmp_path: Any) -> Any:
     reg = DeviceRegistry(Config(), cloud_client=FakeCloudClient())  # type: ignore[arg-type]
     set_registry(reg)
+    set_audit(AuditLog(tmp_path / "audit.jsonl"))
     yield
     set_registry(None)
+    set_audit(None)
 
 
 def test_version_health_check() -> None:
