@@ -1,0 +1,105 @@
+"""Unit tests for the M1 read tools, driven through an injected registry (no network).
+
+Tools are FastMCP ``FunctionTool`` objects; ``.fn`` is the underlying coroutine.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+import pytest
+
+from shelly_mcp.client import DeviceRegistry
+from shelly_mcp.config import Config
+from shelly_mcp.server import (
+    set_registry,
+    shelly_get_info,
+    shelly_get_status,
+    shelly_list_components,
+    shelly_list_devices,
+    shelly_version,
+)
+
+TELEVIZE = {
+    "switch:0": {"output": True, "apower": 0.6, "voltage": 220.4, "current": 0.04,
+                 "aenergy": {"total": 379998.094}},
+    "_dev_info": {"id": "80646fe72f38", "gen": "G2", "code": "SNPL-00112EU", "online": True},
+}
+MYCKA = {
+    "relays": [{"ison": False, "source": "cloud"}],
+    "meters": [{"power": 0, "total": 548723}],  # Watt-minutes
+    "_dev_info": {"id": "3ce90ed7c30e", "gen": "G1", "code": "SHPLG-S", "online": True},
+}
+
+
+class FakeCloudClient:
+    def __init__(self) -> None:
+        self.statuses = {"80646fe72f38": TELEVIZE, "3ce90ed7c30e": MYCKA}
+
+    async def all_status(self, *, show_info: bool = True) -> dict[str, Any]:
+        return self.statuses
+
+    async def device_status(self, device_id: str) -> dict[str, Any]:
+        return self.statuses[device_id]
+
+    async def post(self, endpoint: str, data: dict[str, Any]) -> dict[str, Any]:
+        return {"ok": True}
+
+    async def aclose(self) -> None:
+        pass
+
+
+@pytest.fixture(autouse=True)
+def _wire_registry() -> Any:
+    reg = DeviceRegistry(Config(), cloud_client=FakeCloudClient())  # type: ignore[arg-type]
+    set_registry(reg)
+    yield
+    set_registry(None)
+
+
+def test_version_health_check() -> None:
+    out = shelly_version.fn()
+    assert out["name"] == "shelly-mcp"
+    assert out["version"]
+
+
+async def test_list_devices_tool() -> None:
+    out = await shelly_list_devices.fn()
+    assert out["count"] == 2
+    ids = {d["id"] for d in out["devices"]}
+    assert ids == {"80646fe72f38", "3ce90ed7c30e"}
+
+
+async def test_get_info_tool_includes_capabilities() -> None:
+    out = await shelly_get_info.fn(device="80646fe72f38")
+    assert out["identity"]["model"] == "SNPL-00112EU"
+    assert out["capabilities"]["has_voltage_current"] is True
+
+
+async def test_get_status_gen2_normalized() -> None:
+    out = await shelly_get_status.fn(device="80646fe72f38")
+    assert out["gen"] == 2
+    ch = out["channels"]["switch:0"]
+    assert ch["output"] is True
+    assert ch["energy_total_wh"] == 379998.094  # Wh passthrough
+    assert "raw" in out
+
+
+async def test_get_status_gen1_converts_watt_minutes() -> None:
+    out = await shelly_get_status.fn(device="3ce90ed7c30e")
+    assert out["gen"] == 1
+    ch = out["channels"]["switch:0"]
+    # 548723 Wmin / 60 — the conversion surfaces all the way through the tool
+    assert abs(ch["energy_total_wh"] - 548723 / 60.0) < 1e-9
+
+
+async def test_get_status_component_filter_narrows_and_scopes_raw() -> None:
+    out = await shelly_get_status.fn(device="80646fe72f38", component="switch:0")
+    assert set(out["channels"]) == {"switch:0"}
+    assert out["raw"] == TELEVIZE["switch:0"]  # raw scoped to the one component
+
+
+async def test_list_components_tool() -> None:
+    out = await shelly_list_components.fn(device="3ce90ed7c30e")
+    assert "relay:0" in out["components"]
+    assert "meter:0" in out["components"]

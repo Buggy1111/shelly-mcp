@@ -12,7 +12,7 @@ from shelly_mcp.backends.base import (
     UnsupportedOnCloud,
     UnsupportedOnGeneration,
 )
-from shelly_mcp.backends.cloud import CloudBackend, CloudClient
+from shelly_mcp.backends.cloud import CloudBackend, CloudClient, identity_from_status
 
 __all__ = [
     "Backend",
@@ -23,4 +23,5 @@ __all__ = [
     "UnsupportedOnGeneration",
     "CloudBackend",
     "CloudClient",
+    "identity_from_status",
 ]

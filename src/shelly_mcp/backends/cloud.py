@@ -133,6 +133,34 @@ def _has_field(status: dict[str, Any], field: str) -> bool:
     return False
 
 
+def identity_from_status(
+    device_id: str, status: dict[str, Any], name: str | None = None
+) -> tuple[DeviceIdentity, Capabilities]:
+    """Build identity + capabilities from one device's cloud status payload.
+
+    Shared by :meth:`CloudBackend.probe` and the registry's fleet listing so the
+    latter can identify every device from a *single* ``all_status`` call instead of
+    one rate-limited round-trip per device.
+    """
+    info = status.get("_dev_info", {})
+    gen = _GEN_MAP.get(str(info.get("gen")), Generation.GEN2)
+    caps = Capabilities(
+        can_automate=False,  # cloud can never automate
+        has_energy=_has_field(status, "apower") or _has_field(status, "power"),
+        has_voltage_current=_has_field(status, "voltage"),
+        components=_component_keys(status),
+    )
+    ident = DeviceIdentity(
+        id=device_id,
+        name=name,
+        gen=gen,
+        model=info.get("code"),
+        online=bool(info.get("online", True)),
+        backend="cloud",
+    )
+    return ident, caps
+
+
 class CloudBackend:
     """One device, reached over Shelly Cloud. Implements the :class:`Backend` protocol."""
 
@@ -147,22 +175,8 @@ class CloudBackend:
         status = statuses.get(self._id)
         if status is None:
             raise DeviceUnreachable(f"Device '{self._id}' not found in this Shelly Cloud account")
-        info = status.get("_dev_info", {})
-        gen = _GEN_MAP.get(str(info.get("gen")), Generation.GEN2)
-        self._caps = Capabilities(
-            can_automate=False,  # cloud can never automate
-            has_energy=_has_field(status, "apower") or _has_field(status, "power"),
-            has_voltage_current=_has_field(status, "voltage"),
-            components=_component_keys(status),
-        )
-        return DeviceIdentity(
-            id=self._id,
-            name=self._name,
-            gen=gen,
-            model=info.get("code"),
-            online=bool(info.get("online", True)),
-            backend="cloud",
-        )
+        ident, self._caps = identity_from_status(self._id, status, self._name)
+        return ident
 
     async def get_status(self) -> dict[str, Any]:
         return await self._client.device_status(self._id)
