@@ -10,6 +10,8 @@
 
 ## Milestones
 
+> **Progress (2026-06-08):** M0 ✅ scaffold + `CloudBackend` (live-verified, 4 devices). M1 ✅ for the **cloud path** — `Normalizer` (transport-aware energy, ADR-005), `DeviceRegistry`, read tools `shelly_{list_devices,get_info,get_status,list_components}`. 51 tests green, ruff+mypy clean. **Deferred to M2 (needs WSL mirrored networking):** local `Gen2RpcBackend`/`Gen1RestBackend`, `shelly_discover` (mDNS), `methods.py` registry, `shelly_{get_config,list_methods,rpc}`, auto-onboarding, contract tests on local fixtures, live re-verify of the Gen1 *local* Wmin path.
+
 ### M0 — Foundation (the `ShellyClient` core)
 - `backends/base.py`: `Backend` Protocol, `Capabilities`, exception hierarchy (`UnsupportedOnGeneration`, `UnsupportedOnCloud`, `AuthRequired`, `DeviceUnreachable`).
 - `Gen2RpcBackend` + `Gen1RestBackend` via aioshelly; `CloudBackend` (reuse logic from the existing `~/.hermes/shelly/shelly.py`).
