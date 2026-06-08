@@ -10,7 +10,14 @@
 
 ## Milestones
 
-> **Progress (2026-06-08):** M0 ✅ scaffold + `CloudBackend` (live-verified, 4 devices). M1 ✅ for the **cloud path** — `Normalizer` (transport-aware energy, ADR-005), `DeviceRegistry`, read tools `shelly_{list_devices,get_info,get_status,list_components}`. 51 tests green, ruff+mypy clean. **Deferred to M2 (needs WSL mirrored networking):** local `Gen2RpcBackend`/`Gen1RestBackend`, `shelly_discover` (mDNS), `methods.py` registry, `shelly_{get_config,list_methods,rpc}`, auto-onboarding, contract tests on local fixtures, live re-verify of the Gen1 *local* Wmin path.
+> **Progress (2026-06-08):** **M0–M5 code-complete.** 23 tools + 2 resources + 3 prompts, 142 tests, ruff + `mypy --strict` clean, ~2.5K LOC.
+> - **M0** ✅ scaffold + `CloudBackend` (live-verified, 4 real devices).
+> - **M1** ✅ `Normalizer` (transport-aware energy, ADR-005), `DeviceRegistry` (local-first), `methods.py` (classification + Gen1 REST map), read tools incl. `shelly_discover`/`get_config`/`list_methods`.
+> - **M2** ✅ control tools (switch/light/cover), generic `rpc`/`rpc_write` (confirm + data-loss gates), `audit.py`, **local backends** `Gen2RpcBackend` (raw `/rpc` + Digest) / `Gen1RestBackend` (raw REST + Basic) per **ADR-006** (raw HTTP, not aioshelly WS/CoAP), mDNS discovery.
+> - **M3** ✅ `shelly_energy_live` + best-effort `shelly_energy_history`.
+> - **M4** ✅ `shelly_schedule_*` + `shelly_system_*` (destructive-gated).
+> - **M5** ✅ resources/prompts, README tool surface, CHANGELOG, `server.json`/`glama.json`, security audit (no secret leaks).
+> - ⏳ **One thing pending live hardware:** the local HTTP **socket round-trip** against real devices (needs WSL mirrored networking + a device on the LAN) — request shaping, Digest auth, and routing are unit-tested; cloud path is fully live-verified. Also re-verify the Gen1 *local* Wmin energy path against the Shelly app then.
 
 ### M0 — Foundation (the `ShellyClient` core)
 - `backends/base.py`: `Backend` Protocol, `Capabilities`, exception hierarchy (`UnsupportedOnGeneration`, `UnsupportedOnCloud`, `AuthRequired`, `DeviceUnreachable`).
