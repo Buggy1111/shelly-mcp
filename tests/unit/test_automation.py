@@ -58,6 +58,14 @@ async def test_kvs_set_rejects_blank_key(wire: Any) -> None:
     assert "error" in await shelly_kvs_set.fn(device="dev", key="", value=1)
 
 
+async def test_backend_error_surfaces_as_error_dict(wire: Any) -> None:
+    # The @backend_errors decorator turns a raised BackendError into a uniform {"error": …}.
+    wire.fail_methods.add("KVS.List")
+    out = await shelly_kvs_list.fn(device="dev")
+    assert "error" in out and "KVS.List" in out["error"]
+    assert "keys" not in out  # decorator short-circuits to the error dict
+
+
 async def test_kvs_key_name_not_redacted_in_audit(wire: Any, tmp_path: Path) -> None:
     # A KVS slot name is not a secret — it must stay readable in the audit log.
     await shelly_kvs_set.fn(device="dev", key="last_run", value=1)

@@ -11,7 +11,9 @@ or a real filesystem to be exercised.
 
 from __future__ import annotations
 
-from typing import Any
+import functools
+from collections.abc import Awaitable, Callable
+from typing import Any, ParamSpec
 
 from fastmcp import FastMCP
 
@@ -88,6 +90,31 @@ async def execute_and_audit(
         raise
     get_audit().record(device=device, method=method, params=params, ok=True, result=result)
     return result
+
+
+_P = ParamSpec("_P")
+
+
+def backend_errors(
+    fn: Callable[_P, Awaitable[dict[str, Any]]],
+) -> Callable[_P, Awaitable[dict[str, Any]]]:
+    """Turn a ``BackendError`` raised inside a tool into a uniform ``{"error": msg}`` dict.
+
+    Saves every device-touching tool from repeating ``try/except BackendError``. Apply it
+    **under** ``@mcp.tool`` so FastMCP still introspects the real signature (``functools.wraps``
+    preserves it). Only ``BackendError`` is caught — real bugs still surface. Tools that need
+    partial results (e.g. ``scene_run``'s per-action loop) catch errors themselves and are not
+    decorated.
+    """
+
+    @functools.wraps(fn)
+    async def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> dict[str, Any]:
+        try:
+            return await fn(*args, **kwargs)
+        except BackendError as exc:
+            return {"error": str(exc)}
+
+    return wrapper
 
 
 def confirm_refusal(device: str, method: str, params: dict[str, Any] | None) -> dict[str, Any]:

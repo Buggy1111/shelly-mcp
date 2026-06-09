@@ -1,17 +1,17 @@
 """Schedule tools — list / create / update / delete device schedules (Gen2+, local-only).
 
 Schedules are automation: they live on the device and only exist over a local
-connection (the cloud API can't manage them — the backend raises UnsupportedOnCloud).
-Create validates the 6-field cron timespec, the ≤20-per-device limit, and every call's
-method against the registry. Delete is destructive-gated; create/update are audited.
+connection (the cloud API can't manage them — the backend raises UnsupportedOnCloud,
+surfaced as ``{"error": …}`` by the ``backend_errors`` decorator). Create validates the
+6-field cron timespec, the ≤20-per-device limit, and every call's method against the
+registry. Delete is destructive-gated; create/update are audited.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from shelly_mcp.app import confirm_refusal, execute_and_audit, get_registry, mcp
-from shelly_mcp.backends.base import BackendError
+from shelly_mcp.app import backend_errors, confirm_refusal, execute_and_audit, get_registry, mcp
 from shelly_mcp.methods import Classification, classify
 
 _MAX_SCHEDULES = 20
@@ -42,18 +42,17 @@ def _validate_calls(calls: list[dict[str, Any]]) -> str | None:
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
+@backend_errors
 async def shelly_schedule_list(device: str) -> dict[str, Any]:
     """List the schedules configured on a device. Local-only (cloud can't manage schedules)."""
     backend = await get_registry().get_backend(device)
-    try:
-        result = await backend.call("Schedule.List")
-    except BackendError as exc:
-        return {"device": device, "schedules": [], "error": str(exc)}
+    result = await backend.call("Schedule.List")
     jobs = result.get("jobs", []) if isinstance(result, dict) else []
     return {"device": device, "schedules": jobs}
 
 
 @mcp.tool(annotations={"idempotentHint": True})
+@backend_errors
 async def shelly_schedule_create(
     device: str, timespec: str, calls: list[dict[str, Any]], enable: bool = True
 ) -> dict[str, Any]:
@@ -67,20 +66,18 @@ async def shelly_schedule_create(
         return {"error": err}
 
     backend = await get_registry().get_backend(device)
-    try:
-        existing = await backend.call("Schedule.List")
-        count = len(existing.get("jobs", [])) if isinstance(existing, dict) else 0
-        if count >= _MAX_SCHEDULES:
-            return {"error": f"device already has {count} schedules (max {_MAX_SCHEDULES})"}
-        result = await execute_and_audit(
-            device, "Schedule.Create", {"enable": enable, "timespec": timespec, "calls": calls}
-        )
-    except BackendError as exc:
-        return {"device": device, "error": str(exc)}
+    existing = await backend.call("Schedule.List")
+    count = len(existing.get("jobs", [])) if isinstance(existing, dict) else 0
+    if count >= _MAX_SCHEDULES:
+        return {"error": f"device already has {count} schedules (max {_MAX_SCHEDULES})"}
+    result = await execute_and_audit(
+        device, "Schedule.Create", {"enable": enable, "timespec": timespec, "calls": calls}
+    )
     return {"device": device, "created": result}
 
 
 @mcp.tool(annotations={"idempotentHint": True})
+@backend_errors
 async def shelly_schedule_update(
     device: str,
     id: int,
@@ -98,20 +95,15 @@ async def shelly_schedule_update(
     for name, value in (("timespec", timespec), ("calls", calls), ("enable", enable)):
         if value is not None:
             params[name] = value
-    try:
-        result = await execute_and_audit(device, "Schedule.Update", params)
-    except BackendError as exc:
-        return {"device": device, "error": str(exc)}
+    result = await execute_and_audit(device, "Schedule.Update", params)
     return {"device": device, "updated": result}
 
 
 @mcp.tool(annotations={"destructiveHint": True})
+@backend_errors
 async def shelly_schedule_delete(device: str, id: int, confirm: bool = False) -> dict[str, Any]:
     """Delete a schedule by ``id``. Requires ``confirm:true``. Audit-logged."""
     if not confirm:
         return confirm_refusal(device, "Schedule.Delete", {"id": id})
-    try:
-        result = await execute_and_audit(device, "Schedule.Delete", {"id": id})
-    except BackendError as exc:
-        return {"device": device, "error": str(exc)}
+    result = await execute_and_audit(device, "Schedule.Delete", {"id": id})
     return {"device": device, "deleted": result, "confirmed": True}

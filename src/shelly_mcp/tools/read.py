@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from shelly_mcp import __version__, discovery
-from shelly_mcp.app import get_registry, mcp, resolve_status
+from shelly_mcp.app import backend_errors, get_registry, mcp, resolve_status
 from shelly_mcp.backends.base import BackendError
 
 
@@ -86,6 +86,7 @@ async def shelly_get_status(device: str, component: str | None = None) -> dict[s
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
+@backend_errors
 async def shelly_list_components(device: str) -> dict[str, Any]:
     """List the component keys present on a device (e.g. ['switch:0', 'input:0']).
 
@@ -93,23 +94,18 @@ async def shelly_list_components(device: str) -> dict[str, Any]:
     reading status or controlling it.
     """
     backend = await get_registry().get_backend(device)
-    try:
-        components = await backend.list_components()
-    except BackendError as exc:
-        return {"device": device, "error": str(exc), "components": []}
+    components = await backend.list_components()
     return {"device": device, "components": components}
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
+@backend_errors
 async def shelly_get_config(device: str, component: str | None = None) -> dict[str, Any]:
     """Get a device's raw configuration. Local-first — the Shelly Cloud API can't expose
     config, so this returns an actionable error for cloud-only devices.
     """
     backend = await get_registry().get_backend(device)
-    try:
-        config = await backend.get_config()
-    except BackendError as exc:
-        return {"device": device, "error": str(exc), "config": None}
+    config = await backend.get_config()
     if component is not None and isinstance(config, dict):
         config = {k: v for k, v in config.items() if k == component}
     return {"device": device, "config": config}

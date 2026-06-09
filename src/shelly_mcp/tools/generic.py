@@ -4,19 +4,20 @@
 behind the confirm gate (+ a data-loss double-gate for destructive ones). Together
 they reach every component — present and future — without 150 hand-written tools
 (ADR-002), while the classification in :mod:`shelly_mcp.methods` keeps reads safe and
-writes gated (docs/03-SECURITY §5).
+writes gated (docs/03-SECURITY §5). Backend failures surface as ``{"error": …}`` via the
+``backend_errors`` decorator.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from shelly_mcp.app import confirm_refusal, execute_and_audit, get_registry, mcp
-from shelly_mcp.backends.base import BackendError
+from shelly_mcp.app import backend_errors, confirm_refusal, execute_and_audit, get_registry, mcp
 from shelly_mcp.methods import Classification, classify
 
 
 @mcp.tool(annotations={"readOnlyHint": True, "openWorldHint": True})
+@backend_errors
 async def shelly_rpc(
     device: str, method: str, params: dict[str, Any] | None = None
 ) -> dict[str, Any]:
@@ -34,13 +35,11 @@ async def shelly_rpc(
             "classification": classify(method).value,
         }
     backend = await get_registry().get_backend(device)
-    try:
-        return await backend.call(method, params)
-    except BackendError as exc:
-        return {"device": device, "method": method, "error": str(exc)}
+    return await backend.call(method, params)
 
 
 @mcp.tool(annotations={"destructiveHint": True, "openWorldHint": True})
+@backend_errors
 async def shelly_rpc_write(
     device: str,
     method: str,
@@ -72,23 +71,18 @@ async def shelly_rpc_write(
         return confirm_refusal(device, method, params)
 
     call_params = {k: v for k, v in (params or {}).items() if k != "i_understand_data_loss"}
-    try:
-        result = await execute_and_audit(device, method, call_params)
-    except BackendError as exc:
-        return {"device": device, "method": method, "error": str(exc), "confirmed": True}
+    result = await execute_and_audit(device, method, call_params)
     return {"device": device, "method": method, "confirmed": True, "result": result}
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
+@backend_errors
 async def shelly_list_methods(device: str) -> dict[str, Any]:
     """List the RPC methods a device supports (Gen2+ ``Shelly.ListMethods``).
 
     Returns an actionable error on Gen1/cloud where the device can't enumerate methods.
     """
     backend = await get_registry().get_backend(device)
-    try:
-        result = await backend.call("Shelly.ListMethods")
-    except BackendError as exc:
-        return {"device": device, "methods": [], "error": str(exc)}
+    result = await backend.call("Shelly.ListMethods")
     methods = result.get("methods", result) if isinstance(result, dict) else result
     return {"device": device, "methods": methods}
