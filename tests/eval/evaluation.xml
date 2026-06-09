@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  shelly-mcp evaluation suite (mcp-builder Phase 4) — 10 read-only questions an LLM
+  should answer correctly using only the server's tools. Run against the LIVE MCP
+  (Michal's real test-bed); answers below are the ground truth for that fleet.
+  Some answers (5, 6, 8) depend on live device/firmware state at run time.
+-->
+<evaluation>
+  <qa_pair>
+    <question>Which of my Shelly devices are Gen1 versus Gen2?</question>
+    <answer>mycka is Gen1; televize, led, and svetla-kuchyn report via the Gen2+ model (televize and led are Gen2 hardware; the rest are Gen1 plugs). Tool: shelly_list_devices.</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>What is the total lifetime energy in kWh reported by the mycka plug?</question>
+    <answer>About 549 kWh. (Tool: shelly_energy_live / shelly_get_status on mycka; the cloud reports the Gen1 total already in Wh.)</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Is the TV (televize) currently drawing power, and roughly how much?</question>
+    <answer>Yes, a small standby draw of about 0.6 W. Tool: shelly_energy_live on televize.</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Which device runs on a DC voltage and what is it approximately?</question>
+    <answer>The led (Plus RGBW) runs on low-voltage DC, roughly 24 V. Tool: shelly_get_status / shelly_energy_live on led.</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>How many of my devices are on the 192.168.1.x subnet?</question>
+    <answer>Three (the two Gen1 plugs plus led). Tool: shelly_discover or shelly_list_devices (live/config dependent).</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Which devices have a firmware update available, and on which channel?</question>
+    <answer>Depends on live state; typically led (beta) and mycka (beta) have updates available. Tool: shelly_get_info per device (sys.available_updates).</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>What components does the led device expose?</question>
+    <answer>An rgbw:0 light channel plus its input components. Tool: shelly_list_components on led.</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Which device reports the highest internal (silicon) temperature right now?</question>
+    <answer>Live-dependent — compare temperature_c across devices. Tool: shelly_get_status on each (channel temperature.tC / device tmp).</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>Does the mycka plug report voltage and current?</question>
+    <answer>No. mycka is a Gen1 plug and reports power and energy only — voltage/current come back as null (None), not zero. Tool: shelly_energy_live on mycka.</answer>
+  </qa_pair>
+  <qa_pair>
+    <question>What RGB colour is currently set on the led, and at what brightness?</question>
+    <answer>RGB approximately [255, 23, 47] at about 10% brightness. Tool: shelly_get_status on led (lights/rgbw:0).</answer>
+  </qa_pair>
+</evaluation>
