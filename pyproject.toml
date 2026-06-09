@@ -63,6 +63,7 @@ ignore = ["S101"]  # allow assert in tests
 python_version = "3.11"
 strict = true
 warn_unused_ignores = true
+files = ["src", "tests"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

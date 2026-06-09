@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Lint, type-check & test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package (retry on PyPI flakes)
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 10
+          command: |
+            python -m pip install --upgrade pip
+            pip install -e ".[dev]"
+
+      - name: Lint (ruff)
+        run: python -m ruff check src tests
+
+      - name: Type check (mypy --strict)
+        run: python -m mypy
+
+      - name: Import smoke test
+        run: |
+          python -c "import asyncio; from shelly_mcp.server import mcp; print('tools:', len(asyncio.run(mcp.get_tools())), '| version:', __import__('shelly_mcp').__version__)"
+
+      - name: Run test suite (offline — no live device needed)
+        run: python -m pytest -q
+
+      - name: Build distribution
+        run: |
+          pip install build
+          python -m build
+
+      - name: Upload artifacts
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/

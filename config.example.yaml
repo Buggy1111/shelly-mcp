@@ -1,0 +1,30 @@
+# shelly-mcp configuration — copy to ~/.config/shelly-mcp/config.yaml and `chmod 600`.
+# Precedence: environment variables override file values. Secrets (device passwords,
+# cloud auth_key) are NEVER written back, logged, or returned by any tool.
+
+# Local devices (preferred — full API, no rate limit). Password only if the device
+# has auth enabled. Gen1/Gen2 is auto-detected from GET /shelly.
+devices:
+  televize:
+    ip: 192.168.0.101
+    # password: "..."          # optional; or via env SHELLY_PW_televize
+  mycka:
+    ip: 192.168.1.118          # Gen1 — Basic auth user defaults to "admin"
+    # username: admin
+  led:
+    ip: 192.168.1.116
+
+discovery:
+  subnets: ["192.168.0.0/24", "192.168.1.0/24"]
+  mdns: true
+
+# Optional cloud fallback (off-LAN; control + live status only — no automation).
+# The auth_key is account-wide: treat as a secret, prefer the env var below.
+cloud:
+  enabled: false
+  server: shelly-102-eu.shelly.cloud
+  # auth_key: set via env SHELLY_CLOUD_AUTH_KEY (keep it out of this file)
+
+defaults:
+  timeout_s: 10
+  require_confirm: true         # destructive actions need confirm:true — do not disable lightly
