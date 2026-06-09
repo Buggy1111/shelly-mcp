@@ -25,6 +25,12 @@ class DeviceConfig(BaseModel):
         "devices. The Cloud API doesn't expose device names, so this maps a friendly "
         "config key to its cloud id.",
     )
+    location: str | None = Field(
+        default=None, description="Room/area, e.g. 'kuchyň' — lets 'turn off the kitchen' work"
+    )
+    aliases: list[str] = Field(
+        default_factory=list, description="Extra names that resolve to this device"
+    )
     password: str | None = Field(default=None, repr=False)  # never shown in repr/logs
     username: str = "admin"  # Gen1 basic-auth / Gen2 digest user
 

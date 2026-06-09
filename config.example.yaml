@@ -11,15 +11,20 @@
 devices:
   televize:
     ip: 192.168.0.101
+    location: obývák          # lets "turn off the living room" work
     # password: "..."          # optional; or via env SHELLY_PW_televize
   mycka:
     ip: 192.168.1.118          # Gen1 — Basic auth user defaults to "admin"
+    location: kuchyň
+    aliases: ["myčka", "dishwasher"]
     # username: admin
   led:
     ip: 192.168.1.116
+    location: kuchyň
   # Cloud-only example (no LAN ip): map the friendly name to its cloud device id.
   # boiler:
   #   id: 3ce90ed7c30e
+  #   location: koupelna
 
 discovery:
   subnets: ["192.168.0.0/24", "192.168.1.0/24"]

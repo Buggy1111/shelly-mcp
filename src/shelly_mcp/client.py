@@ -37,11 +37,17 @@ class DeviceRegistry:
         self._http = http_session  # shared session for local HTTP (injected in tests)
         self._identities: dict[str, DeviceIdentity] = {}
         self._caps: dict[str, Capabilities] = {}
-        # Friendly-name -> cloud device id. Seeded from config (the Cloud API doesn't
-        # expose device names) and extended by the fleet listing.
-        self._name_to_id: dict[str, str] = {
-            name: cfg.id for name, cfg in config.devices.items() if cfg.id
-        }
+        # Friendly-name (+ aliases) -> cloud device id. Seeded from config (the Cloud API
+        # doesn't expose device names) and extended by the fleet listing.
+        self._name_to_id: dict[str, str] = {}
+        # cloud-id -> (friendly name, location) to overlay onto probed identities.
+        self._id_meta: dict[str, tuple[str, str | None]] = {}
+        for name, cfg in config.devices.items():
+            if cfg.id:
+                self._name_to_id[name] = cfg.id
+                for alias in cfg.aliases:
+                    self._name_to_id[alias] = cfg.id
+                self._id_meta[cfg.id] = (name, cfg.location)
         self._local_backends: dict[str, Backend] = {}
 
     # ------------------------------------------------------------------ cloud
@@ -68,22 +74,20 @@ class DeviceRegistry:
         for dev_id, status in statuses.items():
             if not isinstance(status, dict):
                 continue
-            name = self._config_name_for(dev_id)
-            ident, caps = identity_from_status(dev_id, status, name)
+            ident, caps = identity_from_status(dev_id, status)
+            ident = self._overlay_meta(ident)
             self._identities[dev_id] = ident
             self._caps[dev_id] = caps
-            if name:
-                self._name_to_id[name] = dev_id
             devices.append(ident)
         return devices
 
-    def _config_name_for(self, dev_id: str) -> str | None:
-        """Friendly name if the device was configured under its cloud id, else None.
-
-        Cloud status carries no LAN ip, so a richer alias->id match waits for M2 local
-        backends (which key naturally on configured name + ip).
-        """
-        return dev_id if dev_id in self._config.devices else None
+    def _overlay_meta(self, ident: DeviceIdentity) -> DeviceIdentity:
+        """Apply the configured friendly name + location to a probed identity."""
+        meta = self._id_meta.get(ident.id)
+        if meta is None:
+            return ident
+        name, location = meta
+        return ident.model_copy(update={"name": name, "location": location})
 
     # ------------------------------------------------------------------ local
     def _ensure_http(self) -> aiohttp.ClientSession:
@@ -136,18 +140,34 @@ class DeviceRegistry:
         return CloudBackend(client, dev_id, self._friendly_name(dev_id))
 
     async def identify(self, device: str) -> DeviceIdentity:
-        """Resolve + probe a single device, caching its identity and capabilities."""
-        dev_id = self._name_to_id.get(device, device)
-        backend = await self.get_backend(dev_id)
-        ident = await backend.probe()
-        self._identities[dev_id] = ident
-        self._caps[dev_id] = backend.capabilities
+        """Probe a device (by the original name, so local-first routing holds) and cache it."""
+        backend = await self.get_backend(device)  # original string → local routing preserved
+        ident = self._overlay_for(device, await backend.probe())
+        self._identities[ident.id] = ident
+        self._caps[ident.id] = backend.capabilities
+        if device != ident.id:
+            self._name_to_id.setdefault(device, ident.id)
         return ident
+
+    def _overlay_for(self, device: str, ident: DeviceIdentity) -> DeviceIdentity:
+        """Overlay configured name + location, by cloud id and by the requested config key."""
+        name: str | None = None
+        location: str | None = None
+        meta = self._id_meta.get(ident.id)
+        if meta is not None:
+            name, location = meta
+        cfg = self._config.devices.get(device)
+        if cfg is not None:
+            name = device
+            location = cfg.location or location
+        if name is None and location is None:
+            return ident
+        return ident.model_copy(update={"name": name or ident.name, "location": location})
 
     def capabilities(self, device: str) -> Capabilities | None:
         """Cached capabilities for a previously-identified device, if any."""
         dev_id = self._name_to_id.get(device, device)
-        return self._caps.get(dev_id)
+        return self._caps.get(dev_id) or self._caps.get(device)
 
     def _friendly_name(self, dev_id: str) -> str | None:
         ident = self._identities.get(dev_id)
@@ -156,8 +176,8 @@ class DeviceRegistry:
     async def require_identity(self, device: str) -> DeviceIdentity:
         """Identity for a device, from cache or by probing (raises if unreachable)."""
         dev_id = self._name_to_id.get(device, device)
-        cached = self._identities.get(dev_id)
-        return cached if cached is not None else await self.identify(dev_id)
+        cached = self._identities.get(dev_id) or self._identities.get(device)
+        return cached if cached is not None else await self.identify(device)
 
     async def aclose(self) -> None:
         if self._cloud is not None:

@@ -27,8 +27,10 @@ mcp: FastMCP = FastMCP(
     instructions=(
         "Control and automate Shelly smart-home devices (Gen1-Gen4 + BLU), local-first. "
         "Read tools are safe; the generic write tool and destructive system tools require "
-        "confirm:true (a hijacked LLM still can't silently destroy). Unofficial community "
-        "project, not affiliated with Allterco/Shelly."
+        "confirm:true (a hijacked LLM still can't silently destroy). To act on a room "
+        "(e.g. 'turn off the kitchen'), call shelly_list_devices, filter by each device's "
+        "'location', then act on those devices. Unofficial community project, not "
+        "affiliated with Allterco/Shelly."
     ),
 )
 

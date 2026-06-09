@@ -122,3 +122,32 @@ async def test_config_name_maps_to_cloud_id() -> None:
     await backend.call("Switch.Set", {"id": 0, "on": False})
     # The control post targeted the real cloud id, not the literal name "mycka".
     assert client.posts[-1][1]["id"] == "3ce90ed7c30e"
+
+
+async def test_aliases_and_location_resolve_and_overlay() -> None:
+    from shelly_mcp.config import DeviceConfig
+
+    config = Config(
+        devices={
+            "mycka": DeviceConfig(
+                id="3ce90ed7c30e", location="kuchyň", aliases=["myčka", "myčku"]
+            )
+        }
+    )
+    reg = DeviceRegistry(config, cloud_client=FakeCloudClient())  # type: ignore[arg-type]
+    # An alias resolves to the same device...
+    ident = await reg.require_identity("myčka")
+    assert ident.id == "3ce90ed7c30e"
+    # ...and the identity carries the configured friendly name + location.
+    assert ident.name == "mycka"
+    assert ident.location == "kuchyň"
+
+
+async def test_list_devices_exposes_location() -> None:
+    from shelly_mcp.config import DeviceConfig
+
+    config = Config(devices={"mycka": DeviceConfig(id="3ce90ed7c30e", location="kuchyň")})
+    reg = DeviceRegistry(config, cloud_client=FakeCloudClient())  # type: ignore[arg-type]
+    devices = await reg.list_devices()
+    mycka = next(d for d in devices if d.id == "3ce90ed7c30e")
+    assert mycka.location == "kuchyň"

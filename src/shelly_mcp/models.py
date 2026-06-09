@@ -37,6 +37,7 @@ class DeviceIdentity(BaseModel):
 
     id: str = Field(description="Device id (lowercase, no colons), e.g. 'shellyplus1-abc'")
     name: str | None = Field(default=None, description="User-friendly name from config")
+    location: str | None = Field(default=None, description="Room/area from config, e.g. 'kuchyň'")
     ip: str | None = Field(default=None, description="LAN IP, if known")
     gen: Generation
     model: str | None = Field(default=None, description="SKU code, e.g. 'SNPL-00112EU'")
