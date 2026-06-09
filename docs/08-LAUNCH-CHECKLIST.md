@@ -9,15 +9,18 @@
 
 ## 0. Pre-flight — verified locally 2026-06-09 (no push)
 
-- [x] **Tests green:** `204 passed` (`.venv/bin/python -m pytest -q`).
+- [x] **Tests green:** `205 passed` (`.venv/bin/python -m pytest -q`).
 - [x] **Lint clean:** `ruff check .` → all checks passed.
 - [x] **Types clean:** `mypy` (`--strict`) → no issues in 48 source files.
 - [x] **Tool surface matches docs:** 47 tools + 2 resources (1 static + 1 template) + 3 prompts,
       confirmed from the live-registered server, not just the docstrings.
 - [x] **Package builds:** `uv build` → `shelly_mcp-0.1.0-py3-none-any.whl` + `.tar.gz`.
 - [x] **Distribution metadata valid:** `uvx twine check dist/*` → both PASSED.
-- [x] **Clean-room install works:** isolated `uv run --with <wheel>` imports the server and
-      registers all tools (no missing-dependency surprise on a fresh machine).
+- [x] **Clean-room install works (over the wire):** wheel installed into a fresh `python -m venv`
+      (deps resolve from `pyproject` alone); the `shelly-mcp` console script serves a real MCP
+      `initialize` + `tools/list` (47) over stdio; and a `tools/call shelly_list_devices` with **no
+      config** returns a clean, actionable error (no traceback), not a crash. `serverInfo.version`
+      correctly reports `0.1.0`.
 - [x] **Version consistent:** `0.1.0` across `pyproject.toml`, `server.json`, `__init__.py`.
 - [x] **Docs reconciled:** test count (199 → 204) and competitive section refreshed.
 
