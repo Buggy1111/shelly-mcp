@@ -11,7 +11,7 @@ This is **not** a personal tool for Michal's 4 devices — those are the real-wo
 
 ## 2. Why build it (the real problem)
 
-- **The space is empty.** Only two control MCPs exist — `mslavov/shelly-mcp` (TS, ⭐1, cloud-only, 5 tools) and `game4automation/shelly` (Py, ⭐0, locked to one desktop app). Neither is on any marketplace. The official Shelly MCP is **docs-only** (it can't control devices). The whole Glama "Home Automation & IoT" category (31 servers) has **zero Shelly coverage**.
+- **The space is near-empty (competitive audit, 2026-06-09).** Only two narrow MCPs exist: `mslavov/shelly-mcp` (TypeScript, cloud-only, ~5 control tools) and `game4automation/shelly` (Python, energy-focused, ~10 tools, listed on LobeHub). The **official** Shelly MCP is *docs-only* — it answers questions about Shelly, it can't touch a device. Even Shelly Cloud's own paid "AI" is just two notification features, not programmatic control. The Glama "Home Automation & IoT" category (31 servers) still has **zero** general-purpose Shelly coverage.
 - **No one does it properly.** No existing MCP unifies Gen1+Gen2, exposes automation (scripts/schedules/webhooks/KVS), or covers energy monitoring with history.
 - **Fits Michal's ethos** — real, hard problem; B2B/practitioner credibility piece, like `anonymize-mcp`.
 
