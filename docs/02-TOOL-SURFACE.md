@@ -46,6 +46,20 @@
 | `shelly_schedule_update` | I | `device`, `id: int`, …fields | `{ok}` |
 | `shelly_schedule_delete` | D, ⚠️ | `device`, `id: int`, `confirm: bool` | `{ok}` |
 
+## Tier 2 — Scenes (v1.0) — server-side named, deterministic
+
+Server-defined named scenes: a saved, ordered batch of `{device, method, params}` run by name — deterministic, schedulable, identical across clients. Stored in a dedicated `scenes.yaml` (atomic write, fail-soft read), non-destructive by construction. Full design: `06-SCENES.md` / ADR-007.
+
+| Tool | Annot. | Inputs | Returns |
+|---|---|---|---|
+| `shelly_scene_list` | RO | — | each scene's name, description, action count |
+| `shelly_scene_get` | RO | `name: str` | the scene's full ordered actions (or error + available names) |
+| `shelly_scene_run` | (mutating, audited) | `name: str` | per-action `{device, method, ok, error?}` + overall `status: ok\|partial\|failed`. Best-effort sequential — a failed action never aborts the rest; re-run a partial later (idempotent) |
+| `shelly_scene_create` | I | `name: str`, `actions: list[{device, method, params}]`, `description?: str`, `overwrite?: bool=false` | `{saved, actions, warnings?}`. Validates: every device known, every method WRITE & **not** DESTRUCTIVE; warns on non-idempotent `.Toggle`; refuses an existing name unless `overwrite` |
+| `shelly_scene_delete` | D, ⚠️ | `name: str`, `confirm: bool` | `{deleted, confirmed}` |
+
+> `scene_run` needs **no** confirm gate: scenes reject destructive methods at create time, so a scheduled/LLM-run scene can't reach `FactoryReset` (LLM06/ASI02).
+
 ## v1.1 — Automation (planned)
 
 `shelly_webhook_{list,create,update,delete}` · `shelly_script_{list,get_code,create,upload,start,stop,eval,delete}` (chunked `PutCode`) · `shelly_kvs_{get,set,list,delete}` · `shelly_virtual_{add,delete,list}`. Same gating rules: reads RO, mutations gated, `script_eval`/`script_upload` are D+⚠️ (arbitrary code on device → ASI05/LLM05).

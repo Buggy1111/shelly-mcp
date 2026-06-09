@@ -1,8 +1,9 @@
 # Shelly MCP — Server-Side Named Scenes (design)
 
-> Design phase. No code yet. Authored with senior-architect guidance. Mantra: *build the
-> smallest thing that really lasts, isolate what will change, write it so it can be deleted
-> without fear.*
+> **Implemented 2026-06-09** (`tools/scenes.py` + `scenes.py`, 23 tests, live-run on real
+> hardware). This doc is the design of record; the decisions in §9 are LOCKED. Authored with
+> senior-architect guidance. Mantra: *build the smallest thing that really lasts, isolate what
+> will change, write it so it can be deleted without fear.*
 
 ## 0. The problem (questioned first)
 

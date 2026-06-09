@@ -1,7 +1,7 @@
 # Shelly MCP Server — Overview & Scope
 
-> **Status:** Design / documentation phase. **No code yet** (by Michal's instruction — build only once everything is certain).
-> **Date:** 2026-06-08
+> **Status:** **M0–M5 + scenes complete; local (Gen1+Gen2) & cloud paths live-verified on real hardware (2026-06-09).** 28 tools + 2 resources + 3 prompts, 174 tests, ruff + `mypy --strict` clean. Not yet pushed to a remote / published — see `05-BUILD-PLAN.md`.
+> **Date:** 2026-06-09 (design started 2026-06-08)
 
 ## 1. What this is
 
@@ -21,8 +21,9 @@ This is **not** a personal tool for Michal's 4 devices — those are the real-wo
 2. **Gen1 ↔ Gen2+ normalization** — one unified tool surface across a decade of hardware. Nobody does this.
 3. **Two-tier coverage** — a *generic component engine* that self-discovers and exposes **every** component (even future ones) + *typed convenience tools* for the common ones. "Covers everything" is structural, not hand-coded.
 4. **Automation as first-class** — schedules, webhooks, scripts, KVS, virtual components. Zero competitors have this.
-5. **Energy monitoring** — live + historical (per-switch `aenergy`, EM/EMData, CSV bulk export).
-6. **Standalone install** — `uvx shelly-mcp` / `pip install`, bring-your-own-credentials, runs locally. No hosting, no lock-in.
+5. **Server-side named scenes** — deterministic, schedulable, cross-client multi-device routines run by name (ADR-007). No competing Shelly MCP has this.
+6. **Energy monitoring** — live + historical (per-switch `aenergy`, EM/EMData, CSV bulk export).
+7. **Standalone install** — `uvx shelly-mcp` / `pip install`, bring-your-own-credentials, runs locally. No hosting, no lock-in.
 
 ## 4. Scope phasing
 
@@ -63,7 +64,7 @@ See `[[shelly-devices]]` memory. Mixed fleet validating both backends:
 | svetla-kuchyn | SNSW-001P8EU (Plus 1) | G2 | `switch:0` + `input:0` |
 | led | SNDC-0D4P10WW (Plus RGBWW) | G2 | `rgbw:0` (24 V DC) |
 
-Two subnets (192.168.0.x and 192.168.1.x) — relevant for discovery (see Architecture §discovery).
+Originally split across two subnets (192.168.0.x + 192.168.1.x); **flattened onto one subnet (192.168.0.x) on 2026-06-09**, which is what enabled local live-verification of both backends. Multi-subnet discovery is still supported (see Architecture §discovery).
 
 ## 6b. Project identity & legal
 
@@ -79,4 +80,6 @@ Two subnets (192.168.0.x and 192.168.1.x) — relevant for discovery (see Archit
 - `02-TOOL-SURFACE.md` — every MCP tool, params, returns, annotations
 - `03-SECURITY.md` — threat model, OWASP/LLM/ASI mapping, secrets, gates
 - `04-CONFIG-AND-DEPLOY.md` — config UX, credentials, WSL networking, distribution
+- `05-BUILD-PLAN.md` — milestones, DoD, roadmap, license/trademark
+- `06-SCENES.md` — server-side named scenes design (ADR-007)
 - `API-CATALOG.md` — authoritative Shelly API reference (~45 components, 150+ methods)

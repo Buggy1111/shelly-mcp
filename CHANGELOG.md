@@ -36,7 +36,9 @@ All notable changes to `shelly-mcp` are documented here. Format follows
   enforcement; credentials never logged or echoed.
 
 ### Notes
-- Cloud path is live-verified against real devices. The **local HTTP socket round-trip
-  is pending live verification** on a real LAN (WSL mirrored networking) — request
-  shaping, digest auth, and routing are unit-tested.
+- **Live-verified (2026-06-09) on real hardware:** cloud path against all 4 devices, and
+  the **local** path end-to-end — Gen2 `POST /rpc` (Plus Plug S, Plus RGBW PM, Plus 1PM
+  Mini) and Gen1 REST (`SHPLG-S`) — once the fleet was flattened onto one subnet. Closes
+  the ADR-006 local-socket caveat. Still to re-confirm: the Gen1 local Wmin energy path
+  against the Shelly app.
 - 174 unit tests; `ruff` + `mypy --strict` clean.

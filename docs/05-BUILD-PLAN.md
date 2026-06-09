@@ -10,14 +10,15 @@
 
 ## Milestones
 
-> **Progress (2026-06-08):** **M0–M5 code-complete.** 23 tools + 2 resources + 3 prompts, 142 tests, ruff + `mypy --strict` clean, ~2.5K LOC.
+> **Progress (2026-06-09):** **M0–M5 + scenes complete; local path live-verified on real hardware.** 28 tools + 2 resources + 3 prompts, 174 tests, ruff + `mypy --strict` clean, ~2.9K LOC.
 > - **M0** ✅ scaffold + `CloudBackend` (live-verified, 4 real devices).
 > - **M1** ✅ `Normalizer` (transport-aware energy, ADR-005), `DeviceRegistry` (local-first), `methods.py` (classification + Gen1 REST map), read tools incl. `shelly_discover`/`get_config`/`list_methods`.
 > - **M2** ✅ control tools (switch/light/cover), generic `rpc`/`rpc_write` (confirm + data-loss gates), `audit.py`, **local backends** `Gen2RpcBackend` (raw `/rpc` + Digest) / `Gen1RestBackend` (raw REST + Basic) per **ADR-006** (raw HTTP, not aioshelly WS/CoAP), mDNS discovery.
 > - **M3** ✅ `shelly_energy_live` + best-effort `shelly_energy_history`.
 > - **M4** ✅ `shelly_schedule_*` + `shelly_system_*` (destructive-gated).
 > - **M5** ✅ resources/prompts, README tool surface, CHANGELOG, `server.json`/`glama.json`, security audit (no secret leaks).
-> - ⏳ **One thing pending live hardware:** the local HTTP **socket round-trip** against real devices (needs WSL mirrored networking + a device on the LAN) — request shaping, Digest auth, and routing are unit-tested; cloud path is fully live-verified. Also re-verify the Gen1 *local* Wmin energy path against the Shelly app then.
+> - **Scenes** ✅ `shelly_scene_*` (5 tools) — server-side named scenes, ADR-007 / `06-SCENES.md`.
+> - **Local live-verification** ✅ **(2026-06-09)** — done **without** WSL mirrored networking by flattening the LAN onto one subnet (`192.168.0.x`); WSL reaches it through the Windows host. **Gen2** verified on real hardware (`POST /rpc`: Plus Plug S + Plus RGBW PM + Plus 1PM Mini) and **Gen1** verified (`SHPLG-S` over REST) — closes the only ADR-006 caveat. Cloud path also live-verified. *Still to re-confirm: the Gen1 local Wmin energy path against the Shelly app.*
 
 ### M0 — Foundation (the `ShellyClient` core)
 - `backends/base.py`: `Backend` Protocol, `Capabilities`, exception hierarchy (`UnsupportedOnGeneration`, `UnsupportedOnCloud`, `AuthRequired`, `DeviceUnreachable`).
