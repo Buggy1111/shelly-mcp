@@ -50,6 +50,8 @@ Auto-discovery (mDNS) finds devices on your LAN. For named devices, multiple sub
 
 **System / schedules (gated):** `shelly_system_reboot|update|set_auth` · `shelly_schedule_list|create|update|delete`
 
+**Scenes (deterministic, named):** `shelly_scene_list|get|run|create|delete` — define a multi-device routine once and run it by name (`shelly_scene_run "film"`), identical every time and schedulable from any client. Stored in `~/.config/shelly-mcp/scenes.yaml` (see `scenes.example.yaml`); non-destructive by construction (ADR-007, `docs/06-SCENES.md`).
+
 **Resources:** `shelly://devices`, `shelly://device/{name}/status` — **Prompts:** `shelly_evening_scene`, `shelly_energy_report`, `shelly_diagnose`
 
 > **Safety:** reads are `readOnlyHint`; every mutation is audit-logged; the generic write tool and destructive system tools require explicit `confirm:true`, and irreversible methods (factory reset, wipe-all) need a second `i_understand_data_loss` gate — so even a hijacked LLM can't silently destroy a device.

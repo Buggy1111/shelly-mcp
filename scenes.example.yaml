@@ -1,0 +1,26 @@
+# shelly-mcp scenes — copy to ~/.config/shelly-mcp/scenes.yaml (or set $SHELLY_MCP_SCENES).
+#
+# A scene is a named, ordered batch of device actions, run deterministically by name
+# (shelly_scene_run "film") — identical every time, schedulable from any client. No secrets
+# live here, so it needs no chmod 600 and you can hand-edit it freely. The MCP tools
+# (shelly_scene_create / _delete) rewrite this file atomically.
+#
+# Each action is {device, method, params}: `device` is the friendly name/alias from your
+# config, `method` a canonical RPC method (the same names the tools use), `params` its args.
+# Methods must be non-destructive (a scene can't FactoryReset). Prefer absolute Switch.Set
+# over Switch.Toggle so the scene is safe to run twice.
+
+scenes:
+  film:
+    description: "Movie night — TV off, kitchen LED dim, dishwasher plug off"
+    actions:
+      - { device: televize, method: Switch.Set, params: { id: 0, on: false } }
+      - { device: led,      method: Light.Set,  params: { id: 0, brightness: 15 } }
+      - { device: mycka,    method: Switch.Set, params: { id: 0, on: false } }
+
+  vse-pryc:
+    description: "Leaving home — everything off"
+    actions:
+      - { device: televize, method: Switch.Set, params: { id: 0, on: false } }
+      - { device: led,      method: Switch.Set, params: { id: 0, on: false } }
+      - { device: mycka,    method: Switch.Set, params: { id: 0, on: false } }

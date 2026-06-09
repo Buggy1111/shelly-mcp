@@ -14,6 +14,7 @@ from typing import Any
 import pytest
 
 from shelly_mcp.audit import AuditLog
+from shelly_mcp.backends.base import DeviceUnreachable
 from shelly_mcp.models import Capabilities, DeviceIdentity, Generation
 from shelly_mcp.server import set_audit, set_registry
 
@@ -26,6 +27,7 @@ class FakeBackend:
         self._status = status
         self.calls: list[tuple[str, dict[str, Any]]] = []
         self._caps = Capabilities()
+        self.fail_methods: set[str] = set()  # methods to raise on (for failure-path tests)
 
     async def probe(self) -> DeviceIdentity:
         return DeviceIdentity(id="dev", gen=self.gen, backend="local_rpc")
@@ -42,6 +44,8 @@ class FakeBackend:
     async def call(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         p = params or {}
         self.calls.append((method, p))
+        if method in self.fail_methods:
+            raise DeviceUnreachable(f"{method} failed (test)")
         ch = f"switch:{int(p.get('id', 0))}"
         if method == "Switch.Set" and ch in self._status:
             self._status[ch]["output"] = bool(p.get("on"))
@@ -77,6 +81,9 @@ class FakeRegistry:
     def capabilities(self, device: str) -> Capabilities:
         return self._backend.capabilities
 
+    def known_devices(self) -> set[str]:
+        return {"dev"}
+
 
 @pytest.fixture
 def gen2_status() -> dict[str, Any]:
@@ -97,3 +104,11 @@ def wire(gen2_status: dict[str, Any], tmp_path: Path) -> Any:
     yield backend
     set_registry(None)
     set_audit(None)
+
+
+@pytest.fixture
+def scenes_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Point the scenes store at a temp file (exercises real path resolution)."""
+    path = tmp_path / "scenes.yaml"
+    monkeypatch.setenv("SHELLY_MCP_SCENES", str(path))
+    return path

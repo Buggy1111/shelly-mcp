@@ -7,6 +7,24 @@ whole surface.
 
 from __future__ import annotations
 
-from shelly_mcp.tools import control, energy, generic, read, resources, schedule, system
+from shelly_mcp.tools import (
+    control,
+    energy,
+    generic,
+    read,
+    resources,
+    scenes,
+    schedule,
+    system,
+)
 
-__all__ = ["read", "control", "energy", "generic", "resources", "schedule", "system"]
+__all__ = [
+    "read",
+    "control",
+    "energy",
+    "generic",
+    "resources",
+    "scenes",
+    "schedule",
+    "system",
+]

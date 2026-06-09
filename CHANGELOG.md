@@ -25,6 +25,11 @@ All notable changes to `shelly-mcp` are documented here. Format follows
 - **System (destructive-gated):** `shelly_system_reboot`/`update`/`set_auth`.
 - **Schedules:** `shelly_schedule_list`/`create`/`update`/`delete` (timespec + ≤20 +
   per-call validation; delete confirm-gated).
+- **Scenes (ADR-007):** `shelly_scene_list`/`get`/`run`/`create`/`delete` — server-side
+  named, deterministic, schedulable multi-device routines stored in a dedicated
+  `scenes.yaml` (atomic write, fail-soft read). Reuses `execute_and_audit`; best-effort
+  sequential run with per-action `ok|partial|failed` results; create rejects READ and
+  DESTRUCTIVE methods and unknown devices, warns on non-idempotent `Toggle`.
 - **MCP resources & prompts:** `shelly://devices`, `shelly://device/{name}/status`;
   `shelly_evening_scene`, `shelly_energy_report`, `shelly_diagnose`.
 - **Security:** append-only JSONL audit log with secret redaction; 0600 config
@@ -34,4 +39,4 @@ All notable changes to `shelly-mcp` are documented here. Format follows
 - Cloud path is live-verified against real devices. The **local HTTP socket round-trip
   is pending live verification** on a real LAN (WSL mirrored networking) — request
   shaping, digest auth, and routing are unit-tested.
-- 142 unit tests; `ruff` + `mypy --strict` clean.
+- 174 unit tests; `ruff` + `mypy --strict` clean.

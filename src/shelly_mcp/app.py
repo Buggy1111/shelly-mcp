@@ -29,8 +29,10 @@ mcp: FastMCP = FastMCP(
         "Read tools are safe; the generic write tool and destructive system tools require "
         "confirm:true (a hijacked LLM still can't silently destroy). To act on a room "
         "(e.g. 'turn off the kitchen'), call shelly_list_devices, filter by each device's "
-        "'location', then act on those devices. Unofficial community project, not "
-        "affiliated with Allterco/Shelly."
+        "'location', then act on those devices. For a repeated multi-device routine, define "
+        "a named scene once (shelly_scene_create) and run it deterministically afterwards "
+        "(shelly_scene_run) — same result every time, schedulable from any client. Unofficial "
+        "community project, not affiliated with Allterco/Shelly."
     ),
 )
 

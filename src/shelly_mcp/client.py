@@ -173,6 +173,18 @@ class DeviceRegistry:
         ident = self._identities.get(dev_id)
         return ident.name if ident else None
 
+    def known_devices(self) -> set[str]:
+        """Every name a scene/tool may reference: config keys + aliases + cloud-id map.
+
+        Purely local (no network) — used to validate scene actions at create time so a
+        typo'd device name is caught immediately rather than only failing at run time.
+        """
+        names: set[str] = set(self._config.devices)
+        for cfg in self._config.devices.values():
+            names.update(cfg.aliases)
+        names.update(self._name_to_id)
+        return names
+
     async def require_identity(self, device: str) -> DeviceIdentity:
         """Identity for a device, from cache or by probing (raises if unreachable)."""
         dev_id = self._name_to_id.get(device, device)
