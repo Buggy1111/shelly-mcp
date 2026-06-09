@@ -1,6 +1,6 @@
 # Shelly MCP Server — Overview & Scope
 
-> **Status:** **M0–M5 + scenes complete; local (Gen1+Gen2) & cloud paths live-verified on real hardware (2026-06-09).** 28 tools + 2 resources + 3 prompts, 174 tests, ruff + `mypy --strict` clean. Not yet pushed to a remote / published — see `05-BUILD-PLAN.md`.
+> **Status:** **M0–M5 + scenes + v1.1 automation tools complete; local (Gen1+Gen2) & cloud paths live-verified on real hardware (2026-06-09).** 47 tools + 2 resources + 3 prompts, 199 tests, ruff + `mypy --strict` clean. Pushed to a **private** GitHub repo; public publishing still pending — see `05-BUILD-PLAN.md`.
 > **Date:** 2026-06-09 (design started 2026-06-08)
 
 ## 1. What this is
@@ -41,9 +41,9 @@ The **generic `rpc_call` + component discovery** ships in v1.0, so the server ca
 | Energy: live + history + CSV export | ✅ | | |
 | Schedule CRUD (time automation) | ✅ | | |
 | System: reboot / update (confirm-gated) | ✅ | | |
-| Webhook CRUD (event automation) | | ✅ | |
-| Script lifecycle (create/upload/start/stop/eval) | | ✅ | |
-| KVS + Virtual components | | ✅ | |
+| Webhook CRUD (event automation) | ✅ | | |
+| Script lifecycle (create/put_code/start/stop/eval) | ✅ | | |
+| KVS + Virtual components | ✅ | | |
 | Push: Outbound WebSocket / MQTT event bus | | ✅ | |
 | BLU / BTHome enrolment + BLU TRV | | | ✅ |
 | Matter / Zigbee (Gen4) | | | ✅ |

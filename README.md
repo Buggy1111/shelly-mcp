@@ -50,6 +50,8 @@ Auto-discovery (mDNS) finds devices on your LAN. For named devices, multiple sub
 
 **System / schedules (gated):** `shelly_system_reboot|update|set_auth` · `shelly_schedule_list|create|update|delete`
 
+**Automation (Gen2+ local-only):** `shelly_kvs_*` (key-value store) · `shelly_webhook_*` (event→HTTP) · `shelly_script_*` (on-device JS — list/get_code/create/put_code/start/stop/eval/delete, chunked upload) · `shelly_virtual_*` (virtual components). Deletes + arbitrary-code paths (`script_put_code`/`eval`) are `confirm:true`-gated.
+
 **Scenes (deterministic, named):** `shelly_scene_list|get|run|create|delete` — define a multi-device routine once and run it by name (`shelly_scene_run "film"`), identical every time and schedulable from any client. Stored in `~/.config/shelly-mcp/scenes.yaml` (see `scenes.example.yaml`); non-destructive by construction (ADR-007, `docs/06-SCENES.md`).
 
 **Resources:** `shelly://devices`, `shelly://device/{name}/status` — **Prompts:** `shelly_evening_scene`, `shelly_energy_report`, `shelly_diagnose`

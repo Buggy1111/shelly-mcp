@@ -10,7 +10,7 @@
 
 ## Milestones
 
-> **Progress (2026-06-09):** **M0–M5 + scenes complete; local path live-verified on real hardware.** 28 tools + 2 resources + 3 prompts, 174 tests, ruff + `mypy --strict` clean, ~2.9K LOC.
+> **Progress (2026-06-09):** **M0–M5 + scenes + v1.1 automation complete; local path live-verified on real hardware; pushed to a private repo.** 47 tools + 2 resources + 3 prompts, 199 tests, ruff + `mypy --strict` clean, ~3.4K LOC.
 > - **M0** ✅ scaffold + `CloudBackend` (live-verified, 4 real devices).
 > - **M1** ✅ `Normalizer` (transport-aware energy, ADR-005), `DeviceRegistry` (local-first), `methods.py` (classification + Gen1 REST map), read tools incl. `shelly_discover`/`get_config`/`list_methods`.
 > - **M2** ✅ control tools (switch/light/cover), generic `rpc`/`rpc_write` (confirm + data-loss gates), `audit.py`, **local backends** `Gen2RpcBackend` (raw `/rpc` + Digest) / `Gen1RestBackend` (raw REST + Basic) per **ADR-006** (raw HTTP, not aioshelly WS/CoAP), mDNS discovery.
@@ -18,6 +18,7 @@
 > - **M4** ✅ `shelly_schedule_*` + `shelly_system_*` (destructive-gated).
 > - **M5** ✅ resources/prompts, README tool surface, CHANGELOG, `server.json`/`glama.json`, security audit (no secret leaks).
 > - **Scenes** ✅ `shelly_scene_*` (5 tools) — server-side named scenes, ADR-007 / `06-SCENES.md`.
+> - **v1.1 automation** ✅ (brought forward) `shelly_kvs_*` (4), `shelly_webhook_*` (4), `shelly_script_*` (8, chunked `PutCode` + reassembled `GetCode`), `shelly_virtual_*` (3) — deletes confirm-gated, arbitrary-code paths (`put_code`/`eval`) confirm-gated (ASI05). Live KVS round-trip + confirm gate verified on real Gen2 HW.
 > - **Local live-verification** ✅ **(2026-06-09)** — done **without** WSL mirrored networking by flattening the LAN onto one subnet (`192.168.0.x`); WSL reaches it through the Windows host. **Gen2** verified on real hardware (`POST /rpc`: Plus Plug S + Plus RGBW PM + Plus 1PM Mini) and **Gen1** verified (`SHPLG-S` over REST) — closes the only ADR-006 caveat. Cloud path also live-verified. *Still to re-confirm: the Gen1 local Wmin energy path against the Shelly app.*
 
 ### M0 — Foundation (the `ShellyClient` core)

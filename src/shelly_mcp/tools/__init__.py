@@ -11,11 +11,15 @@ from shelly_mcp.tools import (
     control,
     energy,
     generic,
+    kvs,
     read,
     resources,
     scenes,
     schedule,
+    script,
     system,
+    virtual,
+    webhook,
 )
 
 __all__ = [
@@ -27,4 +31,8 @@ __all__ = [
     "scenes",
     "schedule",
     "system",
+    "webhook",
+    "script",
+    "kvs",
+    "virtual",
 ]

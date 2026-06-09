@@ -60,9 +60,30 @@ Server-defined named scenes: a saved, ordered batch of `{device, method, params}
 
 > `scene_run` needs **no** confirm gate: scenes reject destructive methods at create time, so a scheduled/LLM-run scene can't reach `FactoryReset` (LLM06/ASI02).
 
-## v1.1 — Automation (planned)
+## Tier 2 — Automation (v1.0): KVS / Webhook / Script / Virtual
 
-`shelly_webhook_{list,create,update,delete}` · `shelly_script_{list,get_code,create,upload,start,stop,eval,delete}` (chunked `PutCode`) · `shelly_kvs_{get,set,list,delete}` · `shelly_virtual_{add,delete,list}`. Same gating rules: reads RO, mutations gated, `script_eval`/`script_upload` are D+⚠️ (arbitrary code on device → ASI05/LLM05).
+Gen2+ local-only (cloud → `UnsupportedOnCloud`). Reads are RO; mutations audited; **deletes confirm-gated**; the **arbitrary-code** paths (`script_put_code`, `script_eval`) are confirm-gated too (ASI05/LLM05 — running code on the device).
+
+| Tool | Annot. | Inputs | Returns |
+|---|---|---|---|
+| `shelly_kvs_list` | RO | `device`, `match?: str="*"` | `{keys: {key→etag}, rev}` |
+| `shelly_kvs_get` | RO | `device`, `key` | `{value, etag}` |
+| `shelly_kvs_set` | I | `device`, `key`, `value: any` | `{etag, rev}` |
+| `shelly_kvs_delete` | D, ⚠️ | `device`, `key`, `confirm` | `{rev}` |
+| `shelly_webhook_list` | RO | `device` | `hooks[]` |
+| `shelly_webhook_create` | I | `device`, `event`, `cid: int`, `urls: [str] (1-5)`, `enable?`, `name?`, `condition?`, `repeat_period?` | `{id, rev}` |
+| `shelly_webhook_update` | I | `device`, `id: int`, …fields | `{rev}` |
+| `shelly_webhook_delete` | D, ⚠️ | `device`, `id: int`, `confirm` | `{rev}` |
+| `shelly_script_list` | RO | `device` | `scripts[]` (id, name, enable, running) |
+| `shelly_script_get_code` | RO | `device`, `id: int` | `{code}` (reassembles paginated `GetCode`) |
+| `shelly_script_create` | I | `device`, `name?` | `{id}` |
+| `shelly_script_put_code` | D, ⚠️ | `device`, `id: int`, `code`, `append?: bool`, `confirm` | `{chunks, len}` — chunks code into ≤1 KB `PutCode` calls |
+| `shelly_script_start` / `_stop` | (stateful) | `device`, `id: int` | `{was_running}` |
+| `shelly_script_eval` | D, ⚠️ | `device`, `id: int`, `code`, `confirm` | `{result}` — evaluates an expression in the running script |
+| `shelly_script_delete` | D, ⚠️ | `device`, `id: int`, `confirm` | `null` |
+| `shelly_virtual_list` | RO | `device` | dynamic components (`Shelly.GetComponents dynamic_only`) |
+| `shelly_virtual_add` | I | `device`, `type` (boolean/number/text/enum/button/group), `config?: dict`, `id?: int 200-299` | `{id}` |
+| `shelly_virtual_delete` | D, ⚠️ | `device`, `key` (`<type>:<cid>`), `confirm` | `null` |
 
 ## v1.2 — BLU / Matter / Zigbee (planned)
 

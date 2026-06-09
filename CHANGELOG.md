@@ -30,6 +30,12 @@ All notable changes to `shelly-mcp` are documented here. Format follows
   `scenes.yaml` (atomic write, fail-soft read). Reuses `execute_and_audit`; best-effort
   sequential run with per-action `ok|partial|failed` results; create rejects READ and
   DESTRUCTIVE methods and unknown devices, warns on non-idempotent `Toggle`.
+- **Automation tools (Gen2+ local-only):** `shelly_kvs_*` (get/set/list/delete),
+  `shelly_webhook_*` (list/create/update/delete), `shelly_script_*` (list/get_code/create/
+  put_code/start/stop/eval/delete — chunked `PutCode`, reassembled `GetCode`),
+  `shelly_virtual_*` (list/add/delete). Deletes are confirm-gated; the arbitrary-code
+  paths (`script_put_code`, `script_eval`) are confirm-gated (ASI05/LLM05). KVS round-trip
+  + confirm gate live-verified on real Gen2 hardware.
 - **MCP resources & prompts:** `shelly://devices`, `shelly://device/{name}/status`;
   `shelly_evening_scene`, `shelly_energy_report`, `shelly_diagnose`.
 - **Security:** append-only JSONL audit log with secret redaction; 0600 config
@@ -41,4 +47,4 @@ All notable changes to `shelly-mcp` are documented here. Format follows
   Mini) and Gen1 REST (`SHPLG-S`) — once the fleet was flattened onto one subnet. Closes
   the ADR-006 local-socket caveat. Still to re-confirm: the Gen1 local Wmin energy path
   against the Shelly app.
-- 174 unit tests; `ruff` + `mypy --strict` clean.
+- 199 unit tests; `ruff` + `mypy --strict` clean.

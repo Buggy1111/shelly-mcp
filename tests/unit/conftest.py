@@ -55,6 +55,18 @@ class FakeBackend:
             return {"jobs": self._status.get("_schedules", [])}
         elif method == "Shelly.ListMethods":
             return {"methods": ["Switch.Set", "Shelly.GetStatus"]}
+        elif method == "KVS.List":
+            return {"keys": {"cfg": "etag1"}, "rev": 3}
+        elif method == "KVS.Get":
+            return {"value": "hello", "etag": "etag1"}
+        elif method == "Webhook.List":
+            return {"hooks": [{"id": 0, "event": "switch.on"}], "rev": 2}
+        elif method == "Script.List":
+            return {"scripts": [{"id": 1, "name": "s", "enable": True, "running": False}]}
+        elif method == "Script.GetCode":
+            return {"data": "let x = 1;", "left": 0}
+        elif method == "Shelly.GetComponents":
+            return {"components": [{"key": "boolean:200", "status": {"value": True}}]}
         return {"ok": True}
 
     @property
