@@ -4,6 +4,10 @@
 
 # Local devices (preferred — full API, no rate limit). Password only if the device
 # has auth enabled. Gen1/Gen2 is auto-detected from GET /shelly.
+#
+# Each device is keyed by a friendly name. Give it an `ip` to reach it locally, OR an
+# `id` (its Shelly Cloud device id) to address a cloud-only device by name — the Cloud
+# API doesn't expose device names, so this mapping is how "turn off mycka" finds it.
 devices:
   televize:
     ip: 192.168.0.101
@@ -13,6 +17,9 @@ devices:
     # username: admin
   led:
     ip: 192.168.1.116
+  # Cloud-only example (no LAN ip): map the friendly name to its cloud device id.
+  # boiler:
+  #   id: 3ce90ed7c30e
 
 discovery:
   subnets: ["192.168.0.0/24", "192.168.1.0/24"]

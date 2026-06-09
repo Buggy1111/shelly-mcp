@@ -37,8 +37,11 @@ class DeviceRegistry:
         self._http = http_session  # shared session for local HTTP (injected in tests)
         self._identities: dict[str, DeviceIdentity] = {}
         self._caps: dict[str, Capabilities] = {}
-        # Friendly-name -> cloud device id, learned from the fleet listing.
-        self._name_to_id: dict[str, str] = {}
+        # Friendly-name -> cloud device id. Seeded from config (the Cloud API doesn't
+        # expose device names) and extended by the fleet listing.
+        self._name_to_id: dict[str, str] = {
+            name: cfg.id for name, cfg in config.devices.items() if cfg.id
+        }
         self._local_backends: dict[str, Backend] = {}
 
     # ------------------------------------------------------------------ cloud

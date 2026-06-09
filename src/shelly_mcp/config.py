@@ -19,6 +19,12 @@ from pydantic import BaseModel, Field
 
 class DeviceConfig(BaseModel):
     ip: str | None = None
+    id: str | None = Field(
+        default=None,
+        description="Shelly Cloud device id (e.g. '3ce90ed7c30e'), for naming cloud-only "
+        "devices. The Cloud API doesn't expose device names, so this maps a friendly "
+        "config key to its cloud id.",
+    )
     password: str | None = Field(default=None, repr=False)  # never shown in repr/logs
     username: str = "admin"  # Gen1 basic-auth / Gen2 digest user
 

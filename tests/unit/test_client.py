@@ -30,6 +30,7 @@ MYCKA = {
 class FakeCloudClient:
     def __init__(self) -> None:
         self.all_status_calls = 0
+        self.posts: list[tuple[str, dict[str, Any]]] = []
         self.statuses: dict[str, dict[str, Any]] = {
             "80646fe72f38": TELEVIZE, "3ce90ed7c30e": MYCKA,
         }
@@ -42,6 +43,7 @@ class FakeCloudClient:
         return self.statuses[device_id]
 
     async def post(self, endpoint: str, data: dict[str, Any]) -> dict[str, Any]:
+        self.posts.append((endpoint, data))
         return {"ok": True}
 
     async def aclose(self) -> None:
@@ -103,3 +105,20 @@ async def test_cloud_not_configured_fails_closed() -> None:
     reg = DeviceRegistry(Config(cloud=CloudConfig(enabled=False)))
     with pytest.raises(BackendError, match="cloud is not configured"):
         await reg.list_devices()
+
+
+async def test_config_name_maps_to_cloud_id() -> None:
+    # The Cloud API doesn't expose device names, so a friendly name -> cloud id mapping
+    # comes from config; get_backend must resolve the name to the right device.
+    from shelly_mcp.config import DeviceConfig
+
+    client = FakeCloudClient()
+    config = Config(devices={"mycka": DeviceConfig(id="3ce90ed7c30e")})
+    reg = DeviceRegistry(config, cloud_client=client)  # type: ignore[arg-type]
+    ident = await reg.require_identity("mycka")
+    assert ident.id == "3ce90ed7c30e"
+    assert ident.gen is Generation.GEN1
+    backend = await reg.get_backend("mycka")
+    await backend.call("Switch.Set", {"id": 0, "on": False})
+    # The control post targeted the real cloud id, not the literal name "mycka".
+    assert client.posts[-1][1]["id"] == "3ce90ed7c30e"
