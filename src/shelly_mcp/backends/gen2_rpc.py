@@ -9,52 +9,16 @@ concern; for request/response this HTTP path is simpler and fully testable.
 
 from __future__ import annotations
 
-import hashlib
 import secrets
 from typing import Any
 
 import aiohttp
 
+from shelly_mcp.auth import digest_authorization, parse_digest_challenge
 from shelly_mcp.backends.base import AuthRequired, BackendError, DeviceUnreachable
 from shelly_mcp.models import Capabilities, DeviceIdentity, Generation
 
 _GEN2_USER = "admin"  # Gen2 digest user is always 'admin'
-
-
-def _parse_challenge(header: str) -> dict[str, str]:
-    """Parse a ``WWW-Authenticate: Digest ...`` header into its key=value parts."""
-    scheme, _, rest = header.partition(" ")
-    if scheme.lower() != "digest":
-        return {}
-    parts: dict[str, str] = {}
-    for token in rest.split(","):
-        key, _, value = token.strip().partition("=")
-        parts[key.strip()] = value.strip().strip('"')
-    return parts
-
-
-def digest_authorization(
-    challenge: dict[str, str], *, user: str, password: str, method: str, uri: str, cnonce: str
-) -> str:
-    """Compute an RFC 7616 SHA-256 Digest ``Authorization`` header value.
-
-    Pure + deterministic given ``cnonce`` (so it's unit-testable against a vector).
-    """
-    realm = challenge.get("realm", "")
-    nonce = challenge.get("nonce", "")
-    qop = challenge.get("qop", "auth")
-    nc = "00000001"
-
-    def h(text: str) -> str:
-        return hashlib.sha256(text.encode()).hexdigest()
-
-    ha1 = h(f"{user}:{realm}:{password}")
-    ha2 = h(f"{method}:{uri}")
-    response = h(f"{ha1}:{nonce}:{nc}:{cnonce}:{qop}:{ha2}")
-    return (
-        f'Digest username="{user}", realm="{realm}", nonce="{nonce}", uri="{uri}", '
-        f'qop={qop}, nc={nc}, cnonce="{cnonce}", response="{response}", algorithm=SHA-256'
-    )
 
 
 class Gen2RpcBackend:
@@ -114,7 +78,9 @@ class Gen2RpcBackend:
                 self._url, json=body, headers=headers, timeout=self._timeout
             ) as resp:
                 if resp.status == 401:
-                    self._challenge = _parse_challenge(resp.headers.get("WWW-Authenticate", ""))
+                    self._challenge = parse_digest_challenge(
+                        resp.headers.get("WWW-Authenticate", "")
+                    )
                     return _AUTH_CHALLENGE
                 if resp.status >= 500:
                     raise DeviceUnreachable(f"Gen2 device {self._ip} error ({resp.status})")

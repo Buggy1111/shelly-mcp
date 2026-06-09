@@ -13,8 +13,8 @@ from shelly_mcp.backends.base import (
     UnsupportedOnGeneration,
 )
 from shelly_mcp.backends.cloud import CloudBackend, CloudClient, identity_from_status
-from shelly_mcp.backends.local_rest import Gen1RestBackend
-from shelly_mcp.backends.local_rpc import Gen2RpcBackend
+from shelly_mcp.backends.gen1_rest import Gen1RestBackend
+from shelly_mcp.backends.gen2_rpc import Gen2RpcBackend
 
 __all__ = [
     "Backend",

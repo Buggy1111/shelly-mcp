@@ -13,6 +13,7 @@ from typing import Any
 
 import aiohttp
 
+from shelly_mcp.auth import basic_auth
 from shelly_mcp.backends.base import AuthRequired, DeviceUnreachable
 from shelly_mcp.methods import gen1_rest_for
 from shelly_mcp.models import Capabilities, DeviceIdentity, Generation
@@ -43,7 +44,7 @@ class Gen1RestBackend:
     ) -> None:
         self._session = session
         self._ip = ip
-        self._auth = aiohttp.BasicAuth(username, password) if password else None
+        self._auth = basic_auth(username, password)
         self._timeout = aiohttp.ClientTimeout(total=timeout_s)
         self._caps = Capabilities()
 
