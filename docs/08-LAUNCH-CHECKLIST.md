@@ -23,6 +23,16 @@
 
 > **Nothing below was done autonomously** — these are the push/account-gated steps for the morning.
 
+### Known advisory (pre-checked 2026-06-09)
+
+`pip-audit` reports **one** vulnerability: `diskcache 5.6.3` — **CVE-2025-69872**. It is a
+**transitive** dependency (`fastmcp[disk]` → `py-key-value-aio[disk]` → `diskcache`), is **not
+imported by any shelly-mcp code**, and currently has **no fixed version published**. Stance:
+**not a launch blocker** (it's not on our code path); track it and pick up the fix once `diskcache`
+ships one or `fastmcp` drops the `[disk]` extra. Our own code is clean — no secrets, no shell/SQL/
+command-injection vectors, no TLS bypass, no bare excepts, no debug output; every mutating /
+destructive / arbitrary-code tool is `confirm`-gated and covered by tests.
+
 ---
 
 ## 1. Decisions to make first (5 min)
