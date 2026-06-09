@@ -82,4 +82,5 @@ Originally split across two subnets (192.168.0.x + 192.168.1.x); **flattened ont
 - `04-CONFIG-AND-DEPLOY.md` — config UX, credentials, WSL networking, distribution
 - `05-BUILD-PLAN.md` — milestones, DoD, roadmap, license/trademark
 - `06-SCENES.md` — server-side named scenes design (ADR-007)
+- `07-PROJECT-LOG.md` — what was built, the git, and the build timeline by day
 - `API-CATALOG.md` — authoritative Shelly API reference (~45 components, 150+ methods)
