@@ -17,6 +17,7 @@ from typing import Any, ParamSpec
 
 from fastmcp import FastMCP
 
+from shelly_mcp import __version__
 from shelly_mcp.audit import AuditLog
 from shelly_mcp.backends.base import BackendError
 from shelly_mcp.client import DeviceRegistry
@@ -26,6 +27,7 @@ from shelly_mcp.normalize import NormalizedStatus, Normalizer
 
 mcp: FastMCP = FastMCP(
     name="shelly-mcp",
+    version=__version__,
     instructions=(
         "Control and automate Shelly smart-home devices (Gen1-Gen4 + BLU), local-first. "
         "Read tools are safe; the generic write tool and destructive system tools require "

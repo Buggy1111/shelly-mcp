@@ -63,9 +63,21 @@ def _wire_registry(tmp_path: Any) -> Any:
 
 
 def test_version_health_check() -> None:
+    from shelly_mcp import __version__
+
     out = shelly_version.fn()
     assert out["name"] == "shelly-mcp"
-    assert out["version"]
+    assert out["version"] == __version__
+
+
+def test_server_reports_own_version_not_framework() -> None:
+    # Regression: FastMCP's serverInfo.version defaults to the framework version; the
+    # MCP handshake must advertise *our* version (0.1.x), not fastmcp's, so clients
+    # display the right thing. See the clean-install smoke test.
+    from shelly_mcp import __version__
+    from shelly_mcp.app import mcp
+
+    assert mcp.version == __version__
 
 
 async def test_list_devices_tool() -> None:

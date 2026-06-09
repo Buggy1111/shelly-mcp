@@ -41,10 +41,20 @@ All notable changes to `shelly-mcp` are documented here. Format follows
 - **Security:** append-only JSONL audit log with secret redaction; 0600 config
   enforcement; credentials never logged or echoed.
 
+### Fixed
+- **MCP handshake advertises our version, not the framework's.** `FastMCP` was instantiated
+  without `version=`, so `serverInfo.version` reported the bundled FastMCP version (e.g. `2.14.7`)
+  instead of `shelly-mcp`'s own `0.1.0`. Now passes `version=__version__`; covered by a regression
+  test. Caught by a clean-room install + over-the-wire `initialize` smoke test.
+
 ### Notes
+- **Clean-install verified (2026-06-09):** built wheel installed into a fresh venv (deps resolve
+  from `pyproject` alone), the `shelly-mcp` console script serves a real MCP `initialize` +
+  `tools/list` (47 tools) over stdio, and a tool call with **no config** returns a clean, actionable
+  error (no traceback) instead of crashing.
 - **Live-verified (2026-06-09) on real hardware:** cloud path against all 4 devices, and
   the **local** path end-to-end — Gen2 `POST /rpc` (Plus Plug S, Plus RGBW PM, Plus 1PM
   Mini) and Gen1 REST (`SHPLG-S`) — once the fleet was flattened onto one subnet. Closes
   the ADR-006 local-socket caveat. Still to re-confirm: the Gen1 local Wmin energy path
   against the Shelly app.
-- 204 unit + contract tests; `ruff` + `mypy --strict` clean.
+- 205 unit + contract tests; `ruff` + `mypy --strict` clean.
