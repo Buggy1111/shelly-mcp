@@ -181,6 +181,7 @@ async def test_delete_confirm_gate(wire: Any, scenes_file: Path) -> None:
     await shelly_scene_create.fn(name="film", actions=_FILM)
     refused = await shelly_scene_delete.fn(name="film")
     assert refused["confirmed"] is False
+    assert refused["would_delete"] == "film"  # preview names the scene, not a device
     assert "film" in load_scenes(scenes_file).scenes  # still there
     ok = await shelly_scene_delete.fn(name="film", confirm=True)
     assert ok["deleted"] == "film"

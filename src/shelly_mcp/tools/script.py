@@ -47,7 +47,7 @@ async def shelly_script_get_code(device: str, id: int) -> dict[str, Any]:
                 break
             data = result.get("data") or ""
             parts.append(data)
-            offset += len(data)
+            offset += len(data.encode("utf-8"))  # GetCode offset is a BYTE position, not chars
             if not result.get("left"):
                 break
     except BackendError as exc:

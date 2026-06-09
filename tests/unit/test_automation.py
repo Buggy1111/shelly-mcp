@@ -6,6 +6,7 @@ validation, and Script.PutCode chunking + GetCode reassembly against the fake ba
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from shelly_mcp.tools.kvs import (
@@ -55,6 +56,14 @@ async def test_kvs_set_audited(wire: Any) -> None:
 
 async def test_kvs_set_rejects_blank_key(wire: Any) -> None:
     assert "error" in await shelly_kvs_set.fn(device="dev", key="", value=1)
+
+
+async def test_kvs_key_name_not_redacted_in_audit(wire: Any, tmp_path: Path) -> None:
+    # A KVS slot name is not a secret — it must stay readable in the audit log.
+    await shelly_kvs_set.fn(device="dev", key="last_run", value=1)
+    audit = (tmp_path / "audit.jsonl").read_text()
+    assert "last_run" in audit
+    assert '"key": "***"' not in audit
 
 
 async def test_kvs_delete_confirm_gate(wire: Any) -> None:

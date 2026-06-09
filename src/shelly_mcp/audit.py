@@ -19,8 +19,10 @@ from typing import Any
 
 logger = logging.getLogger("shelly_mcp.audit")
 
-# Param keys whose values are secrets and must never be written to the log.
-_SECRET_KEYS = frozenset({"password", "pass", "auth_key", "key", "secret", "token"})
+# Param keys whose values are secrets and must never be written to the log. (Bare "key"
+# is deliberately NOT here: KVS.Set/Delete use {"key": slot_name} where the name is not a
+# secret; real secrets are covered by password/pass/auth_key/secret/token.)
+_SECRET_KEYS = frozenset({"password", "pass", "auth_key", "secret", "token"})
 _REDACTED = "***"
 _MAX_VALUE_LEN = 200  # keep summaries small; truncate long blobs (e.g. script code)
 

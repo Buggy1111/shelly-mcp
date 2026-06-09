@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from shelly_mcp.app import confirm_refusal, execute_and_audit, get_registry, mcp
+from shelly_mcp.app import execute_and_audit, get_registry, mcp
 from shelly_mcp.backends.base import BackendError
 from shelly_mcp.methods import Classification, classify
 from shelly_mcp.scenes import Scene, SceneAction, load_scenes, save_scenes
@@ -153,7 +153,11 @@ async def shelly_scene_delete(name: str, confirm: bool = False) -> dict[str, Any
     if name not in sf.scenes:
         return {"error": f"no scene named '{name}'", "available": list(sf.scenes)}
     if not confirm:
-        return confirm_refusal(name, "scene.delete", {"name": name})
+        return {
+            "confirmed": False,
+            "would_delete": name,
+            "message": f"This will delete scene '{name}'. Re-call with confirm=true to proceed.",
+        }
     del sf.scenes[name]
     save_scenes(sf)
     return {"deleted": name, "confirmed": True}
