@@ -60,7 +60,7 @@ Auto-discovery (mDNS) finds devices on your LAN. For named devices, multiple sub
 
 ## Docs
 
-Full design in [`docs/`](./docs/): overview, architecture (+ADRs), tool surface, security, config/deploy, build plan, and the complete Shelly API catalog.
+Full design in [`docs/`](./docs/README.md) (indexed): overview, architecture (+ADRs), tool surface, security, scenes, config/deploy, build plan, project log, roadmap, the launch runbook, and the complete Shelly API catalog.
 
 ## License
 
