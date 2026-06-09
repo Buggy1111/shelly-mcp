@@ -85,10 +85,12 @@ The push of a `v*` tag triggers `release.yml` (build → publish to PyPI → cre
 
 ## 6. MCP Registry
 
-- [ ] **Verify the namespace casing** in `server.json`: `io.github.Buggy1111/shelly-mcp`. The
-      registry authenticates against your GitHub identity; confirm the casing the registry expects
-      (some tooling lowercases the owner). Fix `server.json` *before* publishing if needed — a wrong
-      namespace is the #1 first-publish failure. *(This is pending launch item #1.)*
+- [x] **Namespace casing — verified correct (2026-06-09), do NOT change.** `server.json` is
+      `io.github.Buggy1111/shelly-mcp`. The registry builds the publish permission from your
+      **canonical GitHub login** (`user.Login` → `io.github.Buggy1111/*`) and matches it with a
+      **case-sensitive** prefix check (`internal/auth/jwt.go` `isResourceMatch` → `strings.HasPrefix`,
+      no lowercasing). Confirmed `gh api user --jq .login` = `Buggy1111` (capital B). Lowercasing it
+      to `buggy1111` would make the publish **fail** authorization. *(Closes pending launch item #1.)*
 - [ ] Publish with the `mcp-publisher` CLI: `mcp-publisher login github` → `mcp-publisher publish`
       (follow the current registry docs; the `server.json` schema is already
       `2025-12-11`). 
