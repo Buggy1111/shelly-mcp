@@ -19,7 +19,7 @@
 |---|---|---|---|
 | A01 | Broken Access Control | LLM could trigger destructive RPC | Deny-by-default method classification; `confirm:true` gate on all mutations; data-loss double-gate on FactoryReset |
 | A02 | Security Misconfiguration | Debug WS, verbose errors, world-readable config | Config file enforced `0600`; no debug endpoints; errors sanitized |
-| A03 | Supply Chain | aioshelly + deps compromise | Pin exact versions in `pyproject.toml`/lockfile; `code-audit` skill before each release; minimal deps |
+| A03 | Supply Chain | aioshelly + deps compromise | Bounded version ranges (`>=x,<x+1`) in `pyproject.toml` + exact resolution in `uv.lock` (CI installs from the lock); `code-audit` skill before each release; minimal deps |
 | A04 | Cryptographic Failures | Credentials at rest / in transit | Cloud over TLS; device passwords only in `0600` config/env, never code; digest SHA-256 to devices |
 | A05 | Injection | `method`/`params` in generic RPC; Gen1 URL building | Allowlist method names against the registry; `urllib.parse` encode params; never f-string into shell/URL; Pydantic-validate every input |
 | A06 | Insecure Design | Over-broad agency | Two-tier with gated write path designed in; per-device 6-channel limit; timeouts |

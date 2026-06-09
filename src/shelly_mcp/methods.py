@@ -48,7 +48,7 @@ _DESTRUCTIVE_EXACT = frozenset(
     }
 )
 # Suffixes that make any method irreversible regardless of component.
-_DESTRUCTIVE_SUFFIXES = ("FactoryReset", "DeleteAllData", "ResetWiFiConfig")
+_DESTRUCTIVE_SUFFIXES = ("FactoryReset", "DeleteAllData", "DeleteAll", "ResetWiFiConfig")
 
 
 def _action(method: str) -> str:

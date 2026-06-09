@@ -47,6 +47,20 @@ def test_long_values_truncated() -> None:
     assert len(out["code"]) <= 202
 
 
+def test_list_values_recursed_and_url_creds_stripped() -> None:
+    # A credential embedded in a webhook URL (inside a list) must be masked.
+    out = redact({"urls": ["https://user:secret@host/hook", "https://plain/ok"]})
+    assert "secret" not in str(out["urls"])
+    assert out["urls"][0] == "https://***@host/hook"
+    assert out["urls"][1] == "https://plain/ok"
+
+
+def test_list_of_dicts_redacted() -> None:
+    # Schedule.Create-style calls: a secret nested in a list element is masked.
+    out = redact({"calls": [{"method": "Sys.SetConfig", "params": {"password": "p"}}]})
+    assert out["calls"][0]["params"]["password"] == "***"
+
+
 def test_error_recorded_without_result(tmp_path: Path) -> None:
     log = AuditLog(tmp_path / "audit.jsonl")
     log.record(device="x", method="Switch.Set", params={}, ok=False, error="device unreachable")

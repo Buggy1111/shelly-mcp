@@ -34,7 +34,8 @@ def test_mutations_are_write(method: str) -> None:
 
 @pytest.mark.parametrize("method", [
     "Shelly.FactoryReset", "Shelly.ResetWiFiConfig", "Matter.FactoryReset",
-    "Schedule.DeleteAll", "EM1Data.DeleteAllData", "EM1.RevertToFactoryCalibration",
+    "Schedule.DeleteAll", "Webhook.DeleteAll", "EM1Data.DeleteAllData",
+    "EM1.RevertToFactoryCalibration",
 ])
 def test_destructive_methods_double_gate(method: str) -> None:
     assert classify(method) is Classification.DESTRUCTIVE

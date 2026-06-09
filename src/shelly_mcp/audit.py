@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import time
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,20 @@ logger = logging.getLogger("shelly_mcp.audit")
 _SECRET_KEYS = frozenset({"password", "pass", "auth_key", "secret", "token"})
 _REDACTED = "***"
 _MAX_VALUE_LEN = 200  # keep summaries small; truncate long blobs (e.g. script code)
+# Strip embedded credentials from URLs (e.g. a webhook url https://user:pass@host).
+_URL_CREDS = re.compile(r"(://)[^/@\s:]+:[^/@\s]+@")
+
+
+def _redact_value(value: Any) -> Any:
+    """Recursively redact a value: mask URL creds in strings, recurse dicts AND lists."""
+    if isinstance(value, str):
+        value = _URL_CREDS.sub(r"\1***@", value)
+        return value[:_MAX_VALUE_LEN] + "…" if len(value) > _MAX_VALUE_LEN else value
+    if isinstance(value, dict):
+        return redact(value)
+    if isinstance(value, list):
+        return [_redact_value(v) for v in value]
+    return value
 
 
 def default_audit_path() -> Path:
@@ -37,20 +52,17 @@ def default_audit_path() -> Path:
 
 
 def redact(params: dict[str, Any] | None) -> dict[str, Any]:
-    """Return a copy of ``params`` with secret values masked and long values truncated."""
+    """Return a copy of ``params`` with secret values masked and long values truncated.
+
+    Recurses into nested dicts AND lists (so a secret-keyed param or a credential-bearing
+    URL inside a ``calls``/``urls`` list is masked too).
+    """
     if not params:
         return {}
-    out: dict[str, Any] = {}
-    for key, value in params.items():
-        if key.lower() in _SECRET_KEYS:
-            out[key] = _REDACTED
-        elif isinstance(value, str) and len(value) > _MAX_VALUE_LEN:
-            out[key] = value[:_MAX_VALUE_LEN] + "…"
-        elif isinstance(value, dict):
-            out[key] = redact(value)
-        else:
-            out[key] = value
-    return out
+    return {
+        key: _REDACTED if key.lower() in _SECRET_KEYS else _redact_value(value)
+        for key, value in params.items()
+    }
 
 
 class AuditLog:
