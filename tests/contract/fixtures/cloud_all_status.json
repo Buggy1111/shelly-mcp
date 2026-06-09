@@ -1,0 +1,31 @@
+{
+  "80646fe72f38": {
+    "switch:0": {
+      "id": 0, "output": true, "apower": 0.6, "voltage": 220.4, "current": 0.04,
+      "freq": 50.0, "pf": 0.0,
+      "aenergy": {"total": 379998.094, "by_minute": [0, 0, 0], "minute_ts": 1700000000},
+      "ret_aenergy": {"total": 0.0},
+      "temperature": {"tC": 44.6, "tF": 112.3}, "source": "http"
+    },
+    "_dev_info": {"id": "80646fe72f38", "gen": "G2", "code": "SNPL-00112EU", "online": true, "name": "televize"}
+  },
+  "3ce90ed7c30e": {
+    "relays": [{"ison": false, "source": "cloud", "overpower": false}],
+    "meters": [{"power": 0.0, "total": 548723, "is_valid": true}],
+    "tmp": {"tC": 38.5, "tF": 101.3},
+    "_dev_info": {"id": "3ce90ed7c30e", "gen": "G1", "code": "SHPLG-S", "online": true, "name": "mycka"}
+  },
+  "c4dd57aabbcc": {
+    "rgbw:0": {
+      "id": 0, "output": true, "brightness": 10, "rgb": [255, 23, 47], "white": 0,
+      "apower": 3.2, "aenergy": {"total": 1500.0}
+    },
+    "input:0": {"id": 0, "state": false},
+    "_dev_info": {"id": "c4dd57aabbcc", "gen": "G2", "code": "SNDC-0D4P10WW", "online": true, "name": "led"}
+  },
+  "a8032ab1d2e3": {
+    "relays": [{"ison": true, "source": "input"}],
+    "meters": [{"power": 12.4, "total": 90000}],
+    "_dev_info": {"id": "a8032ab1d2e3", "gen": "G1", "code": "SHPLG-S", "online": true, "name": "svetla-kuchyn"}
+  }
+}
