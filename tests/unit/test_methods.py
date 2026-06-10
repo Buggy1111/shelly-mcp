@@ -7,6 +7,7 @@ import pytest
 from shelly_mcp.backends.base import UnsupportedOnGeneration
 from shelly_mcp.methods import (
     Classification,
+    automation_allowed,
     classify,
     gen1_rest_for,
     is_read,
@@ -30,6 +31,28 @@ def test_reads_are_read(method: str) -> None:
 def test_mutations_are_write(method: str) -> None:
     assert classify(method) is Classification.WRITE
     assert requires_data_loss_ack(method) is False
+
+
+@pytest.mark.parametrize("method", [
+    "Switch.Set", "Switch.Toggle", "Light.Set", "RGB.Set", "RGBW.Set", "CCT.Set",
+    "Cover.Open", "Cover.Close", "Cover.GoToPosition",
+])
+def test_control_methods_are_automation_allowed(method: str) -> None:
+    assert automation_allowed(method) is True
+
+
+@pytest.mark.parametrize("method", [
+    # WRITE by classification, but stored automation running them would bypass the
+    # confirm gates their dedicated tools enforce — the allowlist must reject them.
+    "Script.Eval", "Script.PutCode", "Script.Create", "Shelly.SetAuth",
+    "Webhook.Create", "Schedule.Create", "Sys.SetConfig", "Shelly.Update", "KVS.Set",
+    # destructive and read methods are never automation material
+    "Shelly.FactoryReset", "Schedule.DeleteAll", "Switch.GetStatus",
+    # prefix must match a whole component, not a lookalike
+    "Switchboard.Set", "CoverArt.Set",
+])
+def test_gate_bypass_methods_are_not_automation_allowed(method: str) -> None:
+    assert automation_allowed(method) is False
 
 
 @pytest.mark.parametrize("method", [

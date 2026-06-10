@@ -4,7 +4,9 @@ Schedules are automation: they live on the device and only exist over a local
 connection (the cloud API can't manage them — the backend raises UnsupportedOnCloud,
 surfaced as ``{"error": …}`` by the ``backend_errors`` decorator). Create validates the
 6-field cron timespec, the ≤20-per-device limit, and every call's method against the
-registry. Delete is destructive-gated; create/update are audited.
+control-method allowlist — a schedule must never become a deferred bypass of the
+confirm gates (no ``Shelly.FactoryReset`` at 3am, no ``Script.Eval``; see
+docs/03-SECURITY §5.3). Delete is destructive-gated; create/update are audited.
 """
 
 from __future__ import annotations
@@ -12,7 +14,7 @@ from __future__ import annotations
 from typing import Any
 
 from shelly_mcp.app import backend_errors, confirm_refusal, execute_and_audit, get_registry, mcp
-from shelly_mcp.methods import Classification, classify
+from shelly_mcp.methods import Classification, automation_allowed, classify
 
 _MAX_SCHEDULES = 20
 
@@ -29,7 +31,7 @@ def _validate_timespec(timespec: str) -> str | None:
 
 
 def _validate_calls(calls: list[dict[str, Any]]) -> str | None:
-    """Each scheduled call must target a real mutating method (not a read, not junk)."""
+    """Each scheduled call must be an allowlisted device-control method (no gate bypass)."""
     if not calls or not isinstance(calls, list):
         return "calls must be a non-empty list of {method, params} objects"
     for call in calls:
@@ -37,7 +39,13 @@ def _validate_calls(calls: list[dict[str, Any]]) -> str | None:
         if not isinstance(method, str):
             return "each call needs a 'method' string"
         if classify(method) is Classification.READ:
-            return f"scheduling a read method ('{method}') has no effect — use a mutating method"
+            return f"scheduling a read method ('{method}') has no effect — use a control method"
+        if not automation_allowed(method):
+            return (
+                f"'{method}' is not allowed in a schedule — schedules may only call device "
+                "control methods (Switch/Light/RGB/RGBW/CCT/Cover). Anything else must go "
+                "through its dedicated confirm-gated tool."
+            )
     return None
 
 

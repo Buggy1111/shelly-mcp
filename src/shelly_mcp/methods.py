@@ -71,6 +71,19 @@ def is_read(method: str) -> bool:
     return classify(method) is Classification.READ
 
 
+# Component prefixes a saved scene or an on-device schedule may invoke. This is an
+# ALLOWLIST of plain device-control methods, deliberately narrower than "any WRITE":
+# Script.Eval, Shelly.SetAuth or Webhook.Create classify as WRITE, but letting stored
+# automation run them would bypass the confirm gates their dedicated tools enforce
+# (docs/03-SECURITY §5.3, LLM06/ASI02).
+_AUTOMATION_PREFIXES = ("Switch.", "Light.", "RGB.", "RGBW.", "CCT.", "Cover.")
+
+
+def automation_allowed(method: str) -> bool:
+    """True if a scene/schedule may store this method: a WRITE on a control component."""
+    return classify(method) is Classification.WRITE and method.startswith(_AUTOMATION_PREFIXES)
+
+
 def requires_data_loss_ack(method: str) -> bool:
     """True if the method is irreversible and needs the ``i_understand_data_loss`` gate."""
     return classify(method) is Classification.DESTRUCTIVE

@@ -6,10 +6,11 @@ attempted in order via ``execute_and_audit``, and the result reports per-action 
 plus an overall ``ok|partial|failed`` status — physical actions aren't transactional, so we
 never pretend a half-done scene succeeded (``[[feedback_thorough_verify]]``).
 
-Definitions are validated at create time — every method must be a **non-destructive WRITE**
-and every device must be **known** — so a scheduled, LLM-runnable scene can't become a
-backdoor to a destructive method (LLM06/ASI02). Because scenes are non-destructive by
-construction, ``scene_run`` needs no confirm gate.
+Definitions are validated at create time — every method must be on the **control-method
+allowlist** (Switch/Light/RGB/RGBW/CCT/Cover; see docs/03-SECURITY §5.3) and every device
+must be **known** — so a saved, LLM-runnable scene can't become a backdoor to a destructive
+or gate-bypassing method like ``Script.Eval`` or ``Shelly.SetAuth`` (LLM06/ASI02). Because
+scenes are plain control by construction, ``scene_run`` needs no confirm gate.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ from typing import Any
 
 from shelly_mcp.app import execute_and_audit, get_registry, mcp
 from shelly_mcp.backends.base import BackendError
-from shelly_mcp.methods import Classification, classify
+from shelly_mcp.methods import Classification, automation_allowed, classify
 from shelly_mcp.scenes import Scene, SceneAction, load_scenes, save_scenes
 
 
@@ -47,6 +48,14 @@ def _validate_actions(
             return f"action #{i}: '{method}' is a read — a scene must change device state", [], []
         if cls is Classification.DESTRUCTIVE:
             return f"action #{i}: '{method}' is destructive and not allowed in a scene", [], []
+        if not automation_allowed(method):
+            return (
+                f"action #{i}: '{method}' is not allowed in a scene — scenes may only call "
+                "device control methods (Switch/Light/RGB/RGBW/CCT/Cover); anything else "
+                "must go through its dedicated confirm-gated tool",
+                [],
+                [],
+            )
         if device not in known:
             return f"action #{i}: unknown device '{device}' (known: {sorted(known)})", [], []
         if method.rsplit(".", 1)[-1] == "Toggle":

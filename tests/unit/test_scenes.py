@@ -91,6 +91,16 @@ async def test_create_rejects_destructive_method(wire: Any, scenes_file: Path) -
     assert "error" in out and "destructive" in out["error"]
 
 
+async def test_create_rejects_gate_bypassing_writes(wire: Any, scenes_file: Path) -> None:
+    """Script.Eval / SetAuth are WRITE by classification, but a confirm-free scene
+    running them would bypass the gates their dedicated tools enforce."""
+    for method in ("Script.Eval", "Script.PutCode", "Shelly.SetAuth", "Webhook.Create"):
+        out = await shelly_scene_create.fn(
+            name="x", actions=[{"device": "dev", "method": method}]
+        )
+        assert "not allowed in a scene" in out["error"], method
+
+
 async def test_create_warns_on_toggle(wire: Any, scenes_file: Path) -> None:
     out = await shelly_scene_create.fn(
         name="x", actions=[{"device": "dev", "method": "Switch.Toggle"}]

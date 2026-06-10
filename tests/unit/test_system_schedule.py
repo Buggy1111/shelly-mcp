@@ -9,6 +9,7 @@ from shelly_mcp.tools.schedule import (
     shelly_schedule_create,
     shelly_schedule_delete,
     shelly_schedule_list,
+    shelly_schedule_update,
 )
 from shelly_mcp.tools.system import (
     shelly_system_reboot,
@@ -60,6 +61,33 @@ async def test_schedule_create_validates_timespec(wire: Any) -> None:
     )
     assert "error" in out
     assert "6-field" in out["error"]
+
+
+async def test_schedule_create_rejects_destructive_call(wire: Any) -> None:
+    """A schedule must never become a deferred FactoryReset that skips both gates."""
+    out = await shelly_schedule_create.fn(
+        device="dev", timespec="0 0 3 * * *", calls=[{"method": "Shelly.FactoryReset"}]
+    )
+    assert "not allowed in a schedule" in out["error"]
+    assert wire.calls == []
+
+
+async def test_schedule_create_rejects_gate_bypassing_writes(wire: Any) -> None:
+    """Script.Eval / SetAuth / Webhook.Create are WRITE but gated — no smuggling via schedule."""
+    for method in ("Script.Eval", "Script.PutCode", "Shelly.SetAuth", "Webhook.Create"):
+        out = await shelly_schedule_create.fn(
+            device="dev", timespec="0 0 22 * * *", calls=[{"method": method}]
+        )
+        assert "not allowed in a schedule" in out["error"], method
+    assert wire.calls == []
+
+
+async def test_schedule_update_rejects_gate_bypassing_calls(wire: Any) -> None:
+    out = await shelly_schedule_update.fn(
+        device="dev", id=1, calls=[{"method": "Shelly.FactoryReset"}]
+    )
+    assert "not allowed in a schedule" in out["error"]
+    assert wire.calls == []
 
 
 async def test_schedule_create_rejects_read_call(wire: Any) -> None:
