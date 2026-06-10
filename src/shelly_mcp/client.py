@@ -19,7 +19,7 @@ from shelly_mcp.backends.cloud import CloudBackend, CloudClient, identity_from_s
 from shelly_mcp.backends.gen1_rest import Gen1RestBackend
 from shelly_mcp.backends.gen2_rpc import Gen2RpcBackend
 from shelly_mcp.config import Config, DeviceConfig
-from shelly_mcp.models import Capabilities, DeviceIdentity
+from shelly_mcp.models import Capabilities, DeviceIdentity, Generation
 
 
 class DeviceRegistry:
@@ -82,12 +82,23 @@ class DeviceRegistry:
         return devices
 
     def _overlay_meta(self, ident: DeviceIdentity) -> DeviceIdentity:
-        """Apply the configured friendly name + location to a probed identity."""
+        """Apply the configured friendly name + location to a probed identity.
+
+        Also reflects *command routing* in the listing: the fleet is enumerated via
+        one cloud ``all_status`` call, but a device configured with a LAN ip is
+        controlled locally (see :meth:`get_backend`) — so show its ip and the local
+        backend kind instead of the cloud source it happened to be listed from.
+        """
         meta = self._id_meta.get(ident.id)
         if meta is None:
             return ident
         name, location = meta
-        return ident.model_copy(update={"name": name, "location": location})
+        update: dict[str, object] = {"name": name, "location": location}
+        cfg = self._config.devices.get(name)
+        if cfg is not None and cfg.ip:
+            update["ip"] = cfg.ip
+            update["backend"] = "local_rpc" if ident.gen >= Generation.GEN2 else "local_rest"
+        return ident.model_copy(update=update)
 
     # ------------------------------------------------------------------ local
     def _ensure_http(self) -> aiohttp.ClientSession:

@@ -3,6 +3,15 @@
 All notable changes to `shelly-mcp` are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- `shelly_list_devices` now reports each device's *command routing* instead of the
+  listing source: a device configured with a LAN ip shows `backend: local_rpc`
+  (Gen2+) / `local_rest` (Gen1) and its ip, matching how `get_backend` actually
+  routes. Previously every device showed `backend: cloud` / `ip: null` because the
+  fleet is enumerated via one cloud `all_status` call, which misled local-first users.
+
 ## [0.1.1] — 2026-06-10
 
 ### Fixed

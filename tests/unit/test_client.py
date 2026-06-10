@@ -151,3 +151,37 @@ async def test_list_devices_exposes_location() -> None:
     devices = await reg.list_devices()
     mycka = next(d for d in devices if d.id == "3ce90ed7c30e")
     assert mycka.location == "kuchyň"
+
+
+async def test_list_devices_shows_local_routing_for_configured_ip() -> None:
+    """The listing must reflect how commands will route, not the cloud listing source.
+
+    A device with a configured LAN ip is controlled locally (local-first routing in
+    get_backend), so the fleet listing shows its ip and the local backend kind —
+    local_rpc for Gen2+, local_rest for Gen1.
+    """
+    from shelly_mcp.config import DeviceConfig
+
+    config = Config(
+        devices={
+            "televize": DeviceConfig(id="80646fe72f38", ip="192.168.0.101"),  # Gen2
+            "mycka": DeviceConfig(id="3ce90ed7c30e", ip="192.168.0.107"),  # Gen1
+        }
+    )
+    reg = DeviceRegistry(config, cloud_client=FakeCloudClient())  # type: ignore[arg-type]
+    devices = {d.id: d for d in await reg.list_devices()}
+    assert devices["80646fe72f38"].backend == "local_rpc"
+    assert devices["80646fe72f38"].ip == "192.168.0.101"
+    assert devices["3ce90ed7c30e"].backend == "local_rest"
+    assert devices["3ce90ed7c30e"].ip == "192.168.0.107"
+
+
+async def test_list_devices_keeps_cloud_backend_without_ip() -> None:
+    """A configured device without an ip really is cloud-routed — listing says so."""
+    from shelly_mcp.config import DeviceConfig
+
+    config = Config(devices={"mycka": DeviceConfig(id="3ce90ed7c30e", location="kuchyň")})
+    reg = DeviceRegistry(config, cloud_client=FakeCloudClient())  # type: ignore[arg-type]
+    devices = {d.id: d for d in await reg.list_devices()}
+    assert devices["3ce90ed7c30e"].backend == "cloud"
+    assert devices["3ce90ed7c30e"].ip is None
