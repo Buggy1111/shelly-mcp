@@ -3,6 +3,13 @@
 All notable changes to `shelly-mcp` are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 
+## [0.1.1] — 2026-06-10
+
+### Fixed
+- MCP Registry ownership marker (`mcp-name: io.github.Buggy1111/shelly-mcp`) added to the
+  README so the Registry can verify the PyPI package; Registry `server.json` description
+  shortened to the 100-char limit. No code changes.
+
 ## [0.1.0] — 2026-06-10
 
 Initial public release.

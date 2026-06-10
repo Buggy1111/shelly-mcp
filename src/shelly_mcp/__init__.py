@@ -3,4 +3,4 @@
 Local-first with cloud fallback. Unofficial community project.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"

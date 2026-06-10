@@ -2,18 +2,18 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.Buggy1111/shelly-mcp",
   "title": "Shelly Smart Home",
-  "description": "Read, control & automate Shelly devices (Gen1-Gen4 + BLU), local-first with cloud fallback. Energy, schedules, named scenes, scripts/webhooks/KVS/virtual components, and a generic RPC engine for total coverage.",
+  "description": "Local-first MCP server for Shelly smart-home devices (Gen1-Gen4): control, energy, automation.",
   "repository": {
     "url": "https://github.com/Buggy1111/shelly-mcp",
     "source": "github"
   },
   "websiteUrl": "https://github.com/Buggy1111/shelly-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "shelly-mcp",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "transport": {
         "type": "stdio"
       }

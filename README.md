@@ -1,5 +1,7 @@
 # shelly-mcp
 
+mcp-name: io.github.Buggy1111/shelly-mcp
+
 **MCP server for the entire Shelly smart-home ecosystem** — read, control, and automate Shelly devices of every generation (Gen1 → Gen4; BLU via its gateway or the generic RPC engine, dedicated BLU tools are on the roadmap) from any MCP client (Claude Desktop, Claude Code, Cursor, …). **Local-first** (zero rate-limit, ~10 ms, full API), with **cloud fallback** for off-LAN access.
 
 > ⚠️ **Unofficial community project.** Not affiliated with, endorsed by, or sponsored by Allterco Robotics / Shelly. "Shelly" is a trademark of its respective owner.
