@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from shelly_mcp.audit import AuditLog, redact
+from shelly_mcp.audit import AuditLog, redact, redact_config
 
 
 def _lines(path: Path) -> list[dict[str, Any]]:
@@ -76,3 +76,30 @@ def test_audit_write_failure_is_swallowed(tmp_path: Path) -> None:
     bad.write_text("i am a file, not a dir")
     log = AuditLog(bad / "audit.jsonl")  # parent is a file -> mkdir/open will fail
     log.record(device="x", method="Switch.Set", params={}, ok=True)  # must not raise
+
+
+# ------------------------------------------------------------- config redaction
+def test_config_redaction_masks_gen1_credentials() -> None:
+    """Gen1 /settings returns Wi-Fi PSK ("key") and MQTT password in the clear."""
+    config = {
+        "wifi_sta": {"ssid": "homenet", "key": "wifi-psk"},
+        "mqtt": {"user": "mq", "pass": "hunter2"},
+        "login": {"username": "admin", "password": "hunter2"},
+        "tls": {"client_key": "PEM...", "ca_cert": "PEM..."},
+    }
+    out = redact_config(config)
+    assert out["wifi_sta"] == {"ssid": "homenet", "key": "***"}
+    assert out["mqtt"] == {"user": "mq", "pass": "***"}
+    assert out["login"]["password"] == "***"
+    assert out["tls"] == {"client_key": "***", "ca_cert": "PEM..."}
+
+
+def test_config_redaction_recurses_lists_and_strips_url_creds() -> None:
+    config = {"actions": [{"urls": ["http://user:pw@host/hook"]}]}
+    out = redact_config(config)
+    assert out["actions"][0]["urls"] == ["http://***@host/hook"]
+
+
+def test_config_redaction_does_not_truncate_long_values() -> None:
+    long = "x" * 500
+    assert redact_config({"sys": {"note": long}})["sys"]["note"] == long

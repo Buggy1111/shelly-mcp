@@ -14,6 +14,7 @@ from shelly_mcp.client import DeviceRegistry
 from shelly_mcp.config import Config
 from shelly_mcp.server import set_audit, set_registry
 from shelly_mcp.tools.read import (
+    shelly_get_config,
     shelly_get_info,
     shelly_get_status,
     shelly_list_components,
@@ -121,3 +122,11 @@ async def test_list_components_tool() -> None:
     out = await shelly_list_components.fn(device="3ce90ed7c30e")
     assert "relay:0" in out["components"]
     assert "meter:0" in out["components"]
+
+
+async def test_get_config_masks_device_credentials(wire: Any) -> None:
+    """Gen1-style cleartext Wi-Fi/MQTT credentials must never reach the model."""
+    out = await shelly_get_config.fn(device="dev")
+    assert out["config"]["wifi_sta"] == {"ssid": "homenet", "key": "***"}
+    assert out["config"]["mqtt"]["pass"] == "***"
+    assert out["config"]["sys"] == {"device": {"name": "fake"}}

@@ -6,6 +6,7 @@ from typing import Any
 
 from shelly_mcp import __version__, discovery
 from shelly_mcp.app import backend_errors, get_registry, mcp, resolve_status
+from shelly_mcp.audit import redact_config
 from shelly_mcp.backends.base import BackendError
 
 
@@ -101,11 +102,13 @@ async def shelly_list_components(device: str) -> dict[str, Any]:
 @mcp.tool(annotations={"readOnlyHint": True})
 @backend_errors
 async def shelly_get_config(device: str, component: str | None = None) -> dict[str, Any]:
-    """Get a device's raw configuration. Local-first — the Shelly Cloud API can't expose
-    config, so this returns an actionable error for cloud-only devices.
+    """Get a device's configuration, with credential fields masked as ``***`` (Gen1
+    ``/settings`` returns Wi-Fi/MQTT secrets in the clear — they must not reach the
+    model). Local-first — the Shelly Cloud API can't expose config, so this returns
+    an actionable error for cloud-only devices.
     """
     backend = await get_registry().get_backend(device)
     config = await backend.get_config()
     if component is not None and isinstance(config, dict):
         config = {k: v for k, v in config.items() if k == component}
-    return {"device": device, "config": config}
+    return {"device": device, "config": redact_config(config)}

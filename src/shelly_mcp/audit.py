@@ -65,6 +65,36 @@ def redact(params: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
+# Device CONFIG payloads carry their own secrets under keys the generic set doesn't
+# cover — Gen1 /settings exposes the Wi-Fi PSK as "key" and MQTT password as "pass".
+# Bare "key" stays out of _SECRET_KEYS (KVS uses it for slot names); config redaction
+# adds it, plus suffix matching for *_key / *_pass / *_secret / *_token style fields.
+_CONFIG_SECRET_KEYS = _SECRET_KEYS | frozenset({"key"})
+_CONFIG_SECRET_SUFFIXES = ("_key", "_pass", "_password", "_secret", "_token")
+
+
+def redact_config(value: Any) -> Any:
+    """Recursively mask secret-bearing fields in a device config payload.
+
+    Used by ``shelly_get_config`` before the config reaches the model: Gen2 devices
+    mostly mask their own secrets, but Gen1 ``/settings`` returns Wi-Fi/MQTT/login
+    credentials in the clear. Unlike :func:`redact` this never truncates — config
+    values are data the caller acts on, not log summaries.
+    """
+    if isinstance(value, dict):
+        return {
+            k: _REDACTED
+            if k.lower() in _CONFIG_SECRET_KEYS or k.lower().endswith(_CONFIG_SECRET_SUFFIXES)
+            else redact_config(v)
+            for k, v in value.items()
+        }
+    if isinstance(value, list):
+        return [redact_config(v) for v in value]
+    if isinstance(value, str):
+        return _URL_CREDS.sub(r"\1***@", value)
+    return value
+
+
 class AuditLog:
     """Append-only JSONL audit sink. One instance per server process."""
 

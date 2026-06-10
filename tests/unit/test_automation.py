@@ -205,3 +205,19 @@ async def test_virtual_delete_confirm_gate(wire: Any) -> None:
     assert (await shelly_virtual_delete.fn(device="dev", key="boolean:200"))["confirmed"] is False
     ok = await shelly_virtual_delete.fn(device="dev", key="boolean:200", confirm=True)
     assert ok["confirmed"] is True
+
+
+async def test_webhook_create_rejects_non_http_urls(wire: Any) -> None:
+    """The device will call these URLs — anything but absolute http(s) is refused."""
+    for url in ("ftp://h/x", "javascript:alert(1)", "//host/x", "host/path", ""):
+        out = await shelly_webhook_create.fn(
+            device="dev", event="switch.on", cid=0, urls=[url]
+        )
+        assert "error" in out, url
+    assert wire.calls == []
+
+
+async def test_webhook_update_rejects_non_http_urls(wire: Any) -> None:
+    out = await shelly_webhook_update.fn(device="dev", id=1, urls=["gopher://h/x"])
+    assert "must be an absolute http(s) URL" in out["error"]
+    assert wire.calls == []

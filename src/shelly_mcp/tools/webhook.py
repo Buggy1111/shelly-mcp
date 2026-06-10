@@ -9,6 +9,7 @@ event belongs to (e.g. switch ``0``).
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urlparse
 
 from shelly_mcp.app import backend_errors, confirm_refusal, execute_and_audit, get_registry, mcp
 
@@ -16,12 +17,21 @@ _MAX_URLS = 5
 
 
 def _validate_urls(urls: list[str]) -> str | None:
+    """Webhook URLs must be absolute http(s) — the DEVICE will call them on events.
+
+    LAN targets (Home Assistant, Node-RED) are legitimate, so private ranges are not
+    blocked — but anything that isn't a plain http(s) URL is (docs/03-SECURITY §5.4).
+    """
     if not urls or not isinstance(urls, list):
         return "urls must be a non-empty list of 1-5 URL strings"
     if len(urls) > _MAX_URLS:
         return f"a webhook allows at most {_MAX_URLS} urls (got {len(urls)})"
-    if not all(isinstance(u, str) and u for u in urls):
-        return "every url must be a non-empty string"
+    for u in urls:
+        if not isinstance(u, str) or not u:
+            return "every url must be a non-empty string"
+        parsed = urlparse(u)
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            return f"url '{u}' must be an absolute http(s) URL — the device will call it"
     return None
 
 

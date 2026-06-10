@@ -36,7 +36,12 @@ class FakeBackend:
         return self._status
 
     async def get_config(self) -> dict[str, Any]:
-        return {"sys": {"device": {"name": "fake"}}}
+        # Includes Gen1-style cleartext credentials so tool tests can prove they never leak.
+        return {
+            "sys": {"device": {"name": "fake"}},
+            "wifi_sta": {"ssid": "homenet", "key": "wifi-psk-secret"},
+            "mqtt": {"enable": True, "user": "mq", "pass": "mqtt-secret"},
+        }
 
     async def list_components(self) -> list[str]:
         return [k for k in self._status if ":" in k]
