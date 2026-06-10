@@ -36,7 +36,8 @@ class DeviceConfig(BaseModel):
 
 
 class DiscoveryConfig(BaseModel):
-    subnets: list[str] = Field(default_factory=list)
+    # mDNS only reaches the local subnet; devices elsewhere are addressed by their
+    # configured `ip` (a `subnets` scan option was documented but never implemented).
     mdns: bool = True
 
 

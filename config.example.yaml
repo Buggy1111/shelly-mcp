@@ -26,8 +26,9 @@ devices:
   #   id: 3ce90ed7c30e
   #   location: koupelna
 
+# mDNS discovery reaches the local subnet; devices on other subnets are simply
+# addressed by their configured `ip` above.
 discovery:
-  subnets: ["192.168.0.0/24", "192.168.1.0/24"]
   mdns: true
 
 # Optional cloud fallback (off-LAN; control + live status only — no automation).

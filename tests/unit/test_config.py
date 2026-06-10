@@ -26,13 +26,14 @@ def test_loads_devices_and_discovery(tmp_path: Path) -> None:
         "  televize:\n"
         "    ip: 192.168.0.101\n"
         "discovery:\n"
-        "  subnets: ['192.168.0.0/24', '192.168.1.0/24']\n"
+        "  mdns: false\n"
+        "  subnets: ['192.168.0.0/24']\n"  # removed option — old configs must still load
     )
     p.chmod(0o600)
     cfg = load_config(p)
     assert cfg.devices["televize"].ip == "192.168.0.101"
     assert cfg.devices["televize"].username == "admin"
-    assert cfg.discovery.subnets == ["192.168.0.0/24", "192.168.1.0/24"]
+    assert cfg.discovery.mdns is False
 
 
 def test_world_readable_secret_file_is_refused(tmp_path: Path) -> None:
