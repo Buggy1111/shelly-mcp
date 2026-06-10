@@ -71,9 +71,12 @@ SceneFile:    scenes: dict[str, Scene]                                # name -> 
 Rules baked into the model / validation:
 - `device` is a **friendly name/alias** (the stable handle) — **resolved at run time**, not stored
   as an IP. IPs change; names don't. (Validated to resolve *now* at create time, to catch typos.)
-- `method` must classify as **WRITE** — a READ in a scene does nothing (rejected, like `schedule_create`).
-- `method` must **not** classify as **DESTRUCTIVE** — see §4. Scenes are everyday automation, not a
-  backdoor to `Shelly.FactoryReset`.
+- `method` must be on the **control-method allowlist** (`Switch/Light/RGB/RGBW/CCT/Cover` writes —
+  `methods.automation_allowed`). READs are rejected (a READ in a scene does nothing), DESTRUCTIVE is
+  rejected (see §4), and so are gate-bypassing WRITEs like `Script.Eval`, `Script.PutCode`,
+  `Shelly.SetAuth`, `Webhook.Create` — running those from a saved scene would skip the confirm gates
+  their dedicated tools enforce. *(Tightened from "any non-destructive WRITE" by the 2026-06-10
+  pre-launch audit; `schedule_create` enforces the same allowlist.)*
 - Prefer **absolute** methods (`Switch.Set{on:false}`) over `Switch.Toggle`. Toggle is
   non-idempotent — running the scene twice undoes it. We **warn** on `.Toggle` at create, but allow it.
 
@@ -136,10 +139,11 @@ rollback itself can fail. Any "scene" that pretends to be atomic is lying. So:
    the same physical state. So a `partial` run can simply be **re-run** later to finish — no special
    recovery logic needed. (This is *why* we steer scenes away from `Toggle`.)
 
-4. **Destructive methods are rejected at create time** (not merely confirm-gated at run). A named scene
-   is meant to run unattended / scheduled; embedding `FactoryReset` in a schedulable, LLM-runnable scene
-   is exactly the hijack threat the security model guards (`docs/03-SECURITY`, LLM06/ASI02). Keeping
-   scenes non-destructive means `scene_run` needs **no confirm gate** → it stays clean to schedule.
+4. **Anything outside the control allowlist is rejected at create time** (not merely confirm-gated at
+   run). A named scene is meant to run unattended / scheduled; embedding `FactoryReset` — or
+   `Script.Eval`, which reaches arbitrary device code — in a schedulable, LLM-runnable scene is exactly
+   the hijack threat the security model guards (`docs/03-SECURITY` §5.3, LLM06/ASI02). Keeping scenes
+   plain-control-only means `scene_run` needs **no confirm gate** → it stays clean to schedule.
 
 ## 5. Tool surface (mirrors `schedule_*` for consistency)
 
@@ -152,8 +156,8 @@ rollback itself can fail. Any "scene" that pretends to be atomic is lying. So:
 | `shelly_scene_delete(name, confirm=false)` | `destructiveHint` | remove; requires `confirm:true` |
 
 `create` with `overwrite` covers update too → 5 tools, not 6. Validation in `create`:
-every `device` resolves, every `method` is WRITE and not DESTRUCTIVE, `.Toggle` ⇒ warning in the
-response (not an error). `scene_run` itself needs no confirm gate (non-destructive by construction).
+every `device` resolves, every `method` is on the control allowlist, `.Toggle` ⇒ warning in the
+response (not an error). `scene_run` itself needs no confirm gate (plain control by construction).
 
 ## 6. Scheduling & cross-network (how scenes pay off — and what we deliberately defer)
 
@@ -189,8 +193,8 @@ Estimated footprint: one `tools/scenes.py` vertical slice + a small `scenes.py` 
 ## 8. ADR-007 (recorded in 01-ARCHITECTURE.md)
 
 Storage = dedicated `scenes.yaml`; model = reuse `{device, method, params}` + `execute_and_audit`;
-execution = best-effort sequential with per-action results (no transactions); security = non-destructive
-only; scheduling = lean on device-native `Schedule` + client crons, **no scheduler daemon yet**.
+execution = best-effort sequential with per-action results (no transactions); security = control-method
+allowlist only; scheduling = lean on device-native `Schedule` + client crons, **no scheduler daemon yet**.
 
 ## 9. Decisions — LOCKED (2026-06-09, confirmed by Michal)
 
