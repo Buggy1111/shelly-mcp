@@ -6,18 +6,18 @@ authors = [{ name = "Michal Bugy", email = "michalbugy12@gmail.com" }]
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
-keywords = ["shelly", "mcp", "model-context-protocol", "smart-home", "iot", "home-automation", "aioshelly"]
+keywords = ["shelly", "mcp", "model-context-protocol", "smart-home", "iot", "home-automation"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Home Automation",
     "Intended Audience :: Developers",
 ]
 dependencies = [
     "fastmcp>=2.3,<3",
-    "aioshelly>=12,<13",
     "zeroconf>=0.132,<1",
     "pydantic>=2.7,<3",
     "pyyaml>=6,<7",
