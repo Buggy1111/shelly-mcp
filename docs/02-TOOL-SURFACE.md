@@ -8,12 +8,13 @@
 
 | Tool | Annot. | Inputs | Returns |
 |---|---|---|---|
-| `shelly_discover` | RO, OW | `subnets?: list[str]`, `timeout_s?: int=5`, `use_cloud?: bool` | list of `DeviceIdentity` (id, name, ip, gen, model, mac, online, auth_needed) |
+| `shelly_version` | RO | — | `{name, version}` — server health check |
+| `shelly_discover` | RO, OW | `timeout_s?: float=5`, `use_cloud?: bool` | list of `DeviceIdentity` (id, name, ip, gen, model, mac, online, auth_needed). mDNS browses the local subnet; off-subnet devices are addressed by configured `ip` |
 | `shelly_list_devices` | RO | — | configured + discovered devices from the registry |
 | `shelly_get_info` | RO | `device: str` (name\|id\|ip) | `DeviceIdentity` + firmware, profile, available updates |
 | `shelly_get_status` | RO | `device: str`, `component?: str` | **normalized** canonical status (+`raw`) |
-| `shelly_get_config` | RO | `device: str`, `component?: str` | config (normalized where sensible, else raw) |
-| `shelly_list_components` | RO | `device: str`, `dynamic_only?: bool` | components present on *this* device (+ each one's available methods) |
+| `shelly_get_config` | RO | `device: str`, `component?: str` | config with credential fields masked as `***` (Gen1 `/settings` carries cleartext Wi-Fi/MQTT secrets — they never reach the model) |
+| `shelly_list_components` | RO | `device: str` | components present on *this* device |
 | `shelly_list_methods` | RO | `device: str` | ACL-filtered RPC methods the device supports |
 | `shelly_rpc` | RO, OW | `device: str`, `method: str`, `params?: dict` | raw RPC result. **Read-only guard:** only `*.Get*`/`*.List*`/`*.Check*` methods accepted; anything else → error pointing to `shelly_rpc_write` |
 | `shelly_rpc_write` | D, OW, ⚠️ | `device: str`, `method: str`, `params?: dict`, `confirm: bool` | raw RPC result. Any mutating method. Refuses without `confirm:true`; refuses `FactoryReset`/`ResetWiFiConfig` unless `params.i_understand_data_loss:true`. Audit-logged |
@@ -35,14 +36,14 @@
 | Tool | Annot. | Inputs | Returns |
 |---|---|---|---|
 | `shelly_energy_live` | RO | `device`, `channel?: int` | `EnergyReading` — power_w, voltage, current, pf, freq, total_wh, ret_total_wh (per phase for EM). `None` where unsupported (Gen1) |
-| `shelly_energy_history` | RO | `device`, `from_ts?: int`, `to_ts?: int` (default last 24 h), `resolution?: minute\|hour\|day` | `EnergyHistory`. Pro 3EM → `EMData.GetData`/CSV; per-switch → `aenergy.by_minute`; Gen1 → `/emeter/N/em_data.csv` or `meters[].total` deltas. Degrades gracefully per device |
+| `shelly_energy_history` | RO | `device`, `channel?: int` | best-effort history: lifetime totals always, recent `aenergy.by_minute` series when the device exposes one, with an honest `degraded` list otherwise. (Richer queries — `EMData.GetData`/CSV ranges — are a roadmap item) |
 
 ## Tier 2 — Schedules (v1.0)
 
 | Tool | Annot. | Inputs | Returns |
 |---|---|---|---|
 | `shelly_schedule_list` | RO | `device` | list of schedules (id, enable, timespec, calls) |
-| `shelly_schedule_create` | I | `device`, `timespec: str` (6-field cron, int DOW 0-6), `calls: list[{method, params}]`, `enable?: bool=true` | `{id}`. Validates ≤20/device, validates timespec, validates each call against method registry |
+| `shelly_schedule_create` | I | `device`, `timespec: str` (6-field cron, int DOW 0-6), `calls: list[{method, params}]`, `enable?: bool=true` | `{id}`. Validates ≤20/device, validates timespec, and every call against the **control-method allowlist** (Switch/Light/RGB/RGBW/CCT/Cover) — a schedule can't smuggle `FactoryReset` or `Script.Eval` past the confirm gates (03-SECURITY §5.3) |
 | `shelly_schedule_update` | I | `device`, `id: int`, …fields | `{ok}` |
 | `shelly_schedule_delete` | D, ⚠️ | `device`, `id: int`, `confirm: bool` | `{ok}` |
 
@@ -55,10 +56,10 @@ Server-defined named scenes: a saved, ordered batch of `{device, method, params}
 | `shelly_scene_list` | RO | — | each scene's name, description, action count |
 | `shelly_scene_get` | RO | `name: str` | the scene's full ordered actions (or error + available names) |
 | `shelly_scene_run` | (mutating, audited) | `name: str` | per-action `{device, method, ok, error?}` + overall `status: ok\|partial\|failed`. Best-effort sequential — a failed action never aborts the rest; re-run a partial later (idempotent) |
-| `shelly_scene_create` | I | `name: str`, `actions: list[{device, method, params}]`, `description?: str`, `overwrite?: bool=false` | `{saved, actions, warnings?}`. Validates: every device known, every method WRITE & **not** DESTRUCTIVE; warns on non-idempotent `.Toggle`; refuses an existing name unless `overwrite` |
+| `shelly_scene_create` | I | `name: str`, `actions: list[{device, method, params}]`, `description?: str`, `overwrite?: bool=false` | `{saved, actions, warnings?}`. Validates: every device known, every method on the **control-method allowlist** (Switch/Light/RGB/RGBW/CCT/Cover — no `Script.*`, no `*.SetAuth`); warns on non-idempotent `.Toggle`; refuses an existing name unless `overwrite` |
 | `shelly_scene_delete` | D, ⚠️ | `name: str`, `confirm: bool` | `{deleted, confirmed}` |
 
-> `scene_run` needs **no** confirm gate: scenes reject destructive methods at create time, so a scheduled/LLM-run scene can't reach `FactoryReset` (LLM06/ASI02).
+> `scene_run` needs **no** confirm gate: scenes accept only allowlisted control methods at create time, so a scheduled/LLM-run scene can't reach `FactoryReset`, `Script.Eval`, or `Shelly.SetAuth` (LLM06/ASI02).
 
 ## Tier 2 — Automation (v1.0): KVS / Webhook / Script / Virtual
 
@@ -71,7 +72,7 @@ Gen2+ local-only (cloud → `UnsupportedOnCloud`). Reads are RO; mutations audit
 | `shelly_kvs_set` | I | `device`, `key`, `value: any` | `{etag, rev}` |
 | `shelly_kvs_delete` | D, ⚠️ | `device`, `key`, `confirm` | `{rev}` |
 | `shelly_webhook_list` | RO | `device` | `hooks[]` |
-| `shelly_webhook_create` | I | `device`, `event`, `cid: int`, `urls: [str] (1-5)`, `enable?`, `name?`, `condition?`, `repeat_period?` | `{id, rev}` |
+| `shelly_webhook_create` | I | `device`, `event`, `cid: int`, `urls: [str] (1-5, absolute http(s) only)`, `enable?`, `name?`, `condition?`, `repeat_period?` | `{id, rev}` |
 | `shelly_webhook_update` | I | `device`, `id: int`, …fields | `{rev}` |
 | `shelly_webhook_delete` | D, ⚠️ | `device`, `id: int`, `confirm` | `{rev}` |
 | `shelly_script_list` | RO | `device` | `scripts[]` (id, name, enable, running) |

@@ -1,6 +1,3 @@
-I now have comprehensive data from all the major sources. Let me compile the complete, authoritative reference document.
-
----
 
 # Shelly MCP Server — Complete API Reference
 

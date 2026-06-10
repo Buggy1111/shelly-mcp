@@ -29,8 +29,8 @@
 │  DEVICE LAYER  (ShellyClient — the core abstraction)         │
 │  ── DeviceRegistry  (discovery + config + identity cache)    │
 │  ── ShellyDevice    (resolves to one backend per device)     │
-│       ├── Gen2RpcBackend   (aioshelly RpcDevice / WS+HTTP)   │
-│       ├── Gen1RestBackend  (aioshelly BlockDevice / REST)    │
+│       ├── Gen2RpcBackend   (raw POST /rpc + Digest, ADR-006)│
+│       ├── Gen1RestBackend  (raw REST + Basic, ADR-006)      │
 │       └── CloudBackend     (auth_key, v1/v2 endpoints)       │
 │  ── Normalizer      (Gen1/Gen2/Cloud → canonical model)      │
 │  ── AuthManager     (digest SHA-256 / basic / cloud key)     │
@@ -65,8 +65,8 @@ class Backend(Protocol):
     def capabilities(self) -> Capabilities: ...      # what this device/backend can do
 ```
 
-- **Gen2RpcBackend** wraps `aioshelly.rpc_device.RpcDevice`. Generic `call()` maps straight to JSON-RPC `method`/`params`. Uses the shared `WsServer` so many devices share one inbound socket; respects the **6-channel concurrency limit** per device via a per-device semaphore.
-- **Gen1RestBackend** wraps `aioshelly.block_device.BlockDevice`. Generic `call()` translates a *canonical* method name to the Gen1 REST endpoint (e.g. `Switch.Set{id:0,on:true}` → `GET /relay/0?turn=on`). Methods with no Gen1 equivalent raise `UnsupportedOnGeneration`.
+- **Gen2RpcBackend** speaks raw `POST /rpc` JSON-RPC with an RFC 7616 SHA-256 Digest helper (**ADR-006** — the aioshelly wrappers originally planned here were dropped). Generic `call()` maps straight to JSON-RPC `method`/`params`.
+- **Gen1RestBackend** speaks raw Gen1 REST with optional Basic auth (**ADR-006**). Generic `call()` translates a *canonical* method name to the Gen1 REST endpoint (e.g. `Switch.Set{id:0,on:true}` → `GET /relay/0?turn=on`) via `methods.gen1_rest_for`. Methods with no Gen1 equivalent raise `UnsupportedOnGeneration`.
 - **CloudBackend** posts to the per-account host with `auth_key`. Only `Switch/Light/Cover` control + live status are mapped; everything else raises `UnsupportedOnCloud` (the cloud API genuinely cannot do scripts/schedules/webhooks/KVS/EMData).
 
 ### Capabilities — honest about limits
@@ -123,14 +123,14 @@ The result: the typed tools light up only for components the device actually has
 ## 7. Connection & concurrency
 
 - Per-device **semaphore = 6** (hard Gen2 limit on simultaneous RPC channels). The MCP server is the single polling authority; we never starve the device.
-- Shared `aioshelly.WsServer` for inbound notifications (v1.1 push).
+- Inbound notifications (v1.1 push) would need a WS client/event bus — a deliberate v1.1 decision, no dep carried for it today (ADR-006).
 - Retries with backoff on retryable errors (`-104` deadline, `-108` resource-exhausted, `503` battery-sleep). No retry on `-103`/`-105` (caller error).
 - Hard per-call timeout (default 10 s) — fail-closed on hang.
 
 ## 8. Transport & runtime
 
 - **stdio** transport (mcp-builder guidance for local servers). The server runs on the user's machine, on their LAN, with their credentials. No network listener, no hosting, no inbound attack surface.
-- **async throughout** (`anyio`/`asyncio`) — aioshelly is async; device I/O must never block the event loop.
+- **async throughout** (`asyncio` + `aiohttp`) — device I/O must never block the event loop.
 - Python **3.11+**, packaged with **uv**, entry point `shelly-mcp` (runnable via `uvx shelly-mcp`).
 
 ## 9. Project structure (planned)
@@ -140,7 +140,7 @@ shelly-mcp/
 ├── pyproject.toml            # uv, deps pinned, entry point, MCP Registry server.json next to it
 ├── README.md
 ├── glama.json
-├── server.json               # MCP Registry manifest (io.github.buggy1111/shelly-mcp)
+├── server.json               # MCP Registry manifest (io.github.Buggy1111/shelly-mcp)
 ├── src/shelly_mcp/
 │   ├── __init__.py
 │   ├── server.py             # FastMCP app, tool registration
@@ -178,7 +178,7 @@ Organized as **vertical slices** (a tool group keeps its logic together), not de
 
 ## ADRs (Architecture Decision Records)
 
-### ADR-001 — Language: Python + FastMCP (not TypeScript)
+### ADR-001 — Language: Python + FastMCP (not TypeScript) *(aioshelly part superseded by ADR-006)*
 **Context:** mcp-builder recommends TypeScript by default (SDK maturity, MCPB packaging, model code-gen quality).
 **Options:** (a) TypeScript + `@taulfsime/shelly-rpc-ts`; (b) Python + `aioshelly`.
 **Decision:** **Python + FastMCP + aioshelly.**
@@ -213,7 +213,7 @@ Organized as **vertical slices** (a tool group keeps its logic together), not de
 **Context:** ADR-001 picked aioshelly. In practice its `RpcDevice` drives Gen2 over a WebSocket (`WsRPC` + a `WsServer` context) and its `BlockDevice` drives Gen1 with a CoAP context. Both exist mainly to deliver **push events** — a v1.1 concern (the roadmap lists the Outbound WS event bus under v1.1). For a request/response MCP, that machinery is overhead that also can't be exercised without live hardware on the LAN.
 **Decision:** v1.0 local backends talk raw HTTP. **Gen1** = `GET /status|/settings|/relay/0?...` with optional HTTP Basic auth (aiohttp native). **Gen2+** = `POST /rpc` with `{id,method,params}` and a small RFC 7616 SHA-256 **Digest** helper for auth. No WebSocket, no CoAP.
 **Why:** Simpler, fewer moving parts, and **fully unit-testable offline** (fake aiohttp session). The `/rpc` and Gen1 REST endpoints are stable documented APIs.
-**Consequences:** No push/subscribe in v1.0 (we poll on demand — fine for an MCP). aioshelly stays a pinned dep for a possible v1.1 event bus. **Live-verified 2026-06-09** on real hardware once the fleet was flattened onto one subnet (`192.168.0.x`, reachable from WSL through the Windows host — no WSL mirrored networking needed): Gen2 `POST /rpc` against a Plus Plug S, Plus RGBW PM and Plus 1PM Mini, and Gen1 REST against an `SHPLG-S`. Digest auth + request shaping were already unit-tested; the socket round-trip is now confirmed end-to-end.
+**Consequences:** No push/subscribe in v1.0 (we poll on demand — fine for an MCP). aioshelly was subsequently **dropped from dependencies entirely** (never imported; a v1.1 event bus would re-evaluate it). **Live-verified 2026-06-09** on real hardware once the fleet was flattened onto one subnet (`192.168.0.x`, reachable from WSL through the Windows host — no WSL mirrored networking needed): Gen2 `POST /rpc` against a Plus Plug S, Plus RGBW PM and Plus 1PM Mini, and Gen1 REST against an `SHPLG-S`. Digest auth + request shaping were already unit-tested; the socket round-trip is now confirmed end-to-end.
 
 ### ADR-007 — Server-side named scenes (storage, model, execution, scheduling)
 **Context:** The server has LLM-driven scenes (prompts like `shelly_evening_scene`) but no **deterministic, named, schedulable, cross-client** scenes — the #1 differentiator (no competing Shelly MCP has it). Full design in `docs/06-SCENES.md`.

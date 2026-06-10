@@ -20,8 +20,8 @@ reaches **every** component — including hardware released after the server was
 |---|---|
 | **Tools** | 47 (read · control · energy · schedule · system · scenes · automation · generic engine) |
 | **Resources / prompts** | 2 resources + 3 prompts |
-| **Code** | ~3.2K LOC (`src/`) + ~2.1K LOC tests, 30 source files |
-| **Tests** | 204 unit + contract, all green |
+| **Code** | ~3.3K LOC (`src/`) + ~2.3K LOC tests |
+| **Tests** | 243 unit + contract, all green |
 | **Quality gates** | `ruff` clean · `mypy --strict` clean · CI on Python 3.11 / 3.12 / 3.13 |
 | **Live-verified** | Gen2 `/rpc` + Gen1 REST on real hardware, Cloud path, Hermes/Izy integration |
 | **Security** | Independent audit — confirm-gates / secrets / injection / validation / supply-chain all PASS |
@@ -100,7 +100,7 @@ packaged with `uv`/`hatchling`, `uvx shelly-mcp` to run.
   - **DRY refactor:** a single `@backend_errors` decorator replaced ~31 repeated
     `try/except BackendError` blocks with a uniform `{"error": …}` contract (−30 net LOC), verified
     not to disturb the FastMCP tool schemas.
-- **End of day:** 47 tools, 204 tests, security-audited, **pushed to a private GitHub repo.**
+- **End of day:** 47 tools, 205 tests, security-audited, **pushed to a private GitHub repo.**
 
 ## 6. Where it stands
 
@@ -109,9 +109,28 @@ packaged with `uv`/`hatchling`, `uvx shelly-mcp` to run.
 - **As a product:** pre-launch — private repo, not yet on PyPI/registries, zero external users. The
   next step is purely distribution, not more code.
 
+### 2026-06-10 — pre-launch audit & fixes (Fable 5)
+
+An independent three-track audit (security / code quality / docs accuracy) ran against the
+launch-ready tree and found two real gate bypasses plus a stack of housekeeping. All fixed
+the same day on `auto/audit-fixes`:
+
+- **Security:** scenes + schedules now accept only the control-method allowlist
+  (`Switch/Light/RGB/RGBW/CCT/Cover`) — previously `Schedule.Create` accepted
+  `Shelly.FactoryReset` (a deferred reset past both confirm gates) and a scene accepted
+  `Script.Eval`/`Shelly.SetAuth`. Also: `get_config` credential redaction (Gen1 `/settings`
+  leaks Wi-Fi PSK), webhook URLs restricted to absolute http(s).
+- **Code:** latent circular import broken (backends package re-exports), `@backend_errors`
+  on the whole tool surface (uniform `{"error": …}`), unused `aioshelly` dep and
+  `discovery.subnets` option removed.
+- **Docs:** stale aioshelly/WSL/license/namespace claims reconciled; tool table corrected
+  (47 tools incl. `shelly_version`; real parameter lists); LLM preamble removed from
+  `API-CATALOG.md`. Tests 205 → **243** (gate-bypass regressions, redaction, URL
+  validation, standalone-import tests).
+
 ### Pending before public launch (decisions, not defects)
-1. Verify the MCP Registry namespace casing in `server.json` (`io.github.Buggy1111` vs lowercase).
-2. Refresh the competitive section of `00-OVERVIEW.md` (two narrow competitors now exist).
+1. ~~Verify the MCP Registry namespace casing in `server.json`~~ ✅ done 2026-06-09 (`io.github.Buggy1111`, case-sensitive — see `08-LAUNCH-CHECKLIST.md §6`).
+2. ~~Refresh the competitive section of `00-OVERVIEW.md`~~ ✅ done 2026-06-09.
 3. Decide version + maturity wording (`0.1.0` / Alpha vs `1.0.0` / Beta) and confident README.
 4. Publish: PyPI → MCP Registry → Glama → awesome-mcp.
 

@@ -21,8 +21,8 @@ devices:
   led:
     ip: 192.168.1.116
 
+# mDNS browses the local subnet; devices on other subnets are addressed by `ip` above.
 discovery:
-  subnets: ["192.168.0.0/24", "192.168.1.0/24"]   # Michal's two subnets
   mdns: true
 
 # Optional cloud fallback (off-LAN). The auth_key is account-wide — treat as a secret.
@@ -48,9 +48,11 @@ defaults:
 
 Or `pip install shelly-mcp` → `"command": "shelly-mcp"`. Config/creds resolved from the file + env at startup. stdio transport (ADR-004) — nothing to host.
 
-## 3. Local access on Michal's WSL test-bed (the third open item)
+## 3. Local access on Michal's WSL test-bed — *historical; resolved differently*
 
-**Problem:** WSL runs in **NAT mode** (Claude Code sees `172.24.x`, devices live on `192.168.0/1.x`) → the local backend can't reach the LAN. Only the cloud backend is testable today.
+> **Resolved 2026-06-09 without mirrored networking:** the LAN was flattened onto one subnet (`192.168.0.x`) and WSL reaches the devices through the Windows host — both local backends were live-verified that way. The mirrored-networking recipe below is kept as a fallback for setups where flattening isn't an option.
+
+**Problem (as originally stated):** WSL runs in **NAT mode** (Claude Code sees `172.24.x`, devices live on `192.168.0/1.x`) → the local backend can't reach the LAN. Only the cloud backend is testable today.
 
 **Fix (one-time):** enable **mirrored networking** so WSL shares the Windows host's LAN identity.
 
@@ -71,7 +73,7 @@ Primary model: **bring-your-own-credentials, runs locally** (stdio). Sequence pr
 
 | Channel | Fit | Action |
 |---|---|---|
-| **MCP Registry** | ✅ ideal (metadata-only, points to PyPI) | `server.json` (`io.github.buggy1111/shelly-mcp`) + GitHub OIDC. Auto-ingested by PulseMCP |
+| **MCP Registry** | ✅ ideal (metadata-only, points to PyPI) | `server.json` (`io.github.Buggy1111/shelly-mcp` — case-sensitive) + GitHub OIDC. Auto-ingested by PulseMCP |
 | **PyPI** | ✅ the actual package | `pip install` / `uvx shelly-mcp`; trusted publishing (OIDC, no token in CI) |
 | **Glama** | ✅ | `glama.json` + strong tool descriptions → quality ≥ B (target A like anonymize) |
 | **awesome-mcp-servers** | ✅ | PR to "Home Automation & IoT" with Glama badge |

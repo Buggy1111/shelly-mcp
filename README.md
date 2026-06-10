@@ -1,6 +1,6 @@
 # shelly-mcp
 
-**MCP server for the entire Shelly smart-home ecosystem** — read, control, and automate Shelly devices of every generation (Gen1 → Gen4 + BLU) from any MCP client (Claude Desktop, Claude Code, Cursor, …). **Local-first** (zero rate-limit, ~10 ms, full API), with **cloud fallback** for off-LAN access.
+**MCP server for the entire Shelly smart-home ecosystem** — read, control, and automate Shelly devices of every generation (Gen1 → Gen4; BLU via its gateway or the generic RPC engine, dedicated BLU tools are on the roadmap) from any MCP client (Claude Desktop, Claude Code, Cursor, …). **Local-first** (zero rate-limit, ~10 ms, full API), with **cloud fallback** for off-LAN access.
 
 > ⚠️ **Unofficial community project.** Not affiliated with, endorsed by, or sponsored by Allterco Robotics / Shelly. "Shelly" is a trademark of its respective owner.
 
@@ -24,7 +24,20 @@ Register in your MCP client:
 
 ## Configure
 
-Auto-discovery (mDNS) finds devices on your LAN. For named devices, multiple subnets, or auth, use `~/.config/shelly-mcp/config.yaml` (see `docs/04-CONFIG-AND-DEPLOY.md`).
+Auto-discovery (mDNS) finds devices on your local subnet — `shelly_discover` and you're running. For named devices ("turn off the kitchen"), devices on other subnets, passwords, or the cloud fallback, create `~/.config/shelly-mcp/config.yaml` (`chmod 600`):
+
+```yaml
+devices:
+  televize:
+    ip: 192.168.0.101
+    location: obývák            # lets "turn off the living room" work
+    # password: "..."           # only if the device has auth (or env SHELLY_PW_televize)
+cloud:
+  enabled: false                # optional off-LAN fallback
+  # auth_key via env SHELLY_CLOUD_AUTH_KEY
+```
+
+Full reference: [`config.example.yaml`](https://github.com/Buggy1111/shelly-mcp/blob/main/config.example.yaml) and [`docs/04-CONFIG-AND-DEPLOY.md`](https://github.com/Buggy1111/shelly-mcp/blob/main/docs/04-CONFIG-AND-DEPLOY.md).
 
 ## What data leaves your machine
 
@@ -40,7 +53,7 @@ Auto-discovery (mDNS) finds devices on your LAN. For named devices, multiple sub
 
 ## Tools, resources & prompts
 
-**Read (safe):** `shelly_discover` · `shelly_list_devices` · `shelly_get_info` · `shelly_get_status` (normalized) · `shelly_get_config` · `shelly_list_components` · `shelly_list_methods`
+**Read (safe):** `shelly_version` · `shelly_discover` · `shelly_list_devices` · `shelly_get_info` · `shelly_get_status` (normalized) · `shelly_get_config` (credentials masked) · `shelly_list_components` · `shelly_list_methods`
 
 **Control (audited):** `shelly_switch_set` · `shelly_switch_toggle` · `shelly_light_set` (RGBW/CCT/white) · `shelly_cover_move`
 
@@ -52,16 +65,23 @@ Auto-discovery (mDNS) finds devices on your LAN. For named devices, multiple sub
 
 **Automation (Gen2+ local-only):** `shelly_kvs_*` (key-value store) · `shelly_webhook_*` (event→HTTP) · `shelly_script_*` (on-device JS — list/get_code/create/put_code/start/stop/eval/delete, chunked upload) · `shelly_virtual_*` (virtual components). Deletes + arbitrary-code paths (`script_put_code`/`eval`) are `confirm:true`-gated.
 
-**Scenes (deterministic, named):** `shelly_scene_list|get|run|create|delete` — define a multi-device routine once and run it by name (`shelly_scene_run "film"`), identical every time and schedulable from any client. Stored in `~/.config/shelly-mcp/scenes.yaml` (see `scenes.example.yaml`); non-destructive by construction (ADR-007, `docs/06-SCENES.md`).
+**Scenes (deterministic, named):** `shelly_scene_list|get|run|create|delete` — define a multi-device routine once and run it by name (`shelly_scene_run "film"`), identical every time and schedulable from any client. Stored in `~/.config/shelly-mcp/scenes.yaml` (see [`scenes.example.yaml`](https://github.com/Buggy1111/shelly-mcp/blob/main/scenes.example.yaml)); scenes and schedules accept **only plain control methods** (Switch/Light/RGB(W)/CCT/Cover) — never `Script.Eval`, `SetAuth`, or anything destructive (ADR-007, `docs/06-SCENES.md`).
 
 **Resources:** `shelly://devices`, `shelly://device/{name}/status` — **Prompts:** `shelly_evening_scene`, `shelly_energy_report`, `shelly_diagnose`
 
 > **Safety:** reads are `readOnlyHint`; every mutation is audit-logged; the generic write tool and destructive system tools require explicit `confirm:true`, and irreversible methods (factory reset, wipe-all) need a second `i_understand_data_loss` gate — so even a hijacked LLM can't silently destroy a device.
 
+## Troubleshooting
+
+- **"Device unreachable"** — confirm the IP (`shelly_discover`, your router's client list, or the Shelly app → device → Settings → Device information), and that the machine running the server is on the same LAN. In **WSL/containers, mDNS discovery usually doesn't work** — configure devices by `ip` in the config file instead (that path needs no mDNS).
+- **"Auth required"** — the device has a password: add `password:` under the device in the config (or `SHELLY_PW_<name>` env var).
+- **Cloud-only device refuses automation tools** — expected: the Shelly Cloud API can't manage schedules/scripts/webhooks/KVS; connect locally for those.
+- **Config refuses to load** — if it contains a secret, it must be `chmod 600` (deliberate, fail-closed).
+
 ## Docs
 
-Full design in [`docs/`](./docs/README.md) (indexed): overview, architecture (+ADRs), tool surface, security, scenes, config/deploy, build plan, project log, roadmap, the launch runbook, and the complete Shelly API catalog.
+Full design in [`docs/`](https://github.com/Buggy1111/shelly-mcp/blob/main/docs/README.md) (indexed): overview, architecture (+ADRs), tool surface, security, scenes, config/deploy, build plan, project log, roadmap, the launch runbook, and the complete Shelly API catalog.
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+MIT — see [LICENSE](https://github.com/Buggy1111/shelly-mcp/blob/main/LICENSE).

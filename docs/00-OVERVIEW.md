@@ -64,12 +64,12 @@ See `[[shelly-devices]]` memory. Mixed fleet validating both backends:
 | svetla-kuchyn | SNSW-001P8EU (Plus 1) | G2 | `switch:0` + `input:0` |
 | led | SNDC-0D4P10WW (Plus RGBWW) | G2 | `rgbw:0` (24 V DC) |
 
-Originally split across two subnets (192.168.0.x + 192.168.1.x); **flattened onto one subnet (192.168.0.x) on 2026-06-09**, which is what enabled local live-verification of both backends. Multi-subnet discovery is still supported (see Architecture §discovery).
+Originally split across two subnets (192.168.0.x + 192.168.1.x); **flattened onto one subnet (192.168.0.x) on 2026-06-09**, which is what enabled local live-verification of both backends. mDNS discovery reaches the local subnet only; devices elsewhere are addressed by their configured `ip`.
 
 ## 6b. Project identity & legal
 
-- **Package name:** `shelly-mcp` — verified **free on PyPI** (also `shelly-mcp-server`, `mcp-shelly`). MCP Registry namespace `io.github.buggy1111/shelly-mcp`. Tool prefix `shelly_*`.
-- **License:** recommend **MIT** (max adoption for community infra; differs from anonymize-mcp's non-commercial because there's no endorsement constraint here). One open decision: MIT vs Apache-2.0 — see `05-BUILD-PLAN.md §License`.
+- **Package name:** `shelly-mcp` — verified **free on PyPI** (also `shelly-mcp-server`, `mcp-shelly`). MCP Registry namespace `io.github.Buggy1111/shelly-mcp` (case-sensitive, matches the GitHub login — verified, see `08-LAUNCH-CHECKLIST.md §6`). Tool prefix `shelly_*`.
+- **License:** **MIT** (decided; in `LICENSE` + `pyproject.toml`) — max adoption for community infra; differs from anonymize-mcp's non-commercial because there's no endorsement constraint here.
 - **Trademark:** "Shelly" © Allterco Robotics. README/listings must state *"Unofficial community project, not affiliated with or endorsed by Allterco/Shelly."* See `05-BUILD-PLAN.md §Trademark`.
 - **No conflict** with existing `mslavov/shelly-mcp` (GitHub, ⭐1, never published to PyPI under that name).
 
@@ -83,4 +83,7 @@ Originally split across two subnets (192.168.0.x + 192.168.1.x); **flattened ont
 - `05-BUILD-PLAN.md` — milestones, DoD, roadmap, license/trademark
 - `06-SCENES.md` — server-side named scenes design (ADR-007)
 - `07-PROJECT-LOG.md` — what was built, the git, and the build timeline by day
+- `08-LAUNCH-CHECKLIST.md` — the v0.1.0 launch runbook (gates, PyPI/Registry steps, DoD)
+- `ROADMAP.md` — what comes after v0.1.0
+- `API-CATALOG.md` — the complete Shelly API reference the tools were built against
 - `API-CATALOG.md` — authoritative Shelly API reference (~45 components, 150+ methods)

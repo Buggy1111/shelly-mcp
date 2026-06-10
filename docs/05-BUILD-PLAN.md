@@ -2,10 +2,12 @@
 
 > The implementation sequence to take this from empty repo to a published v1.0 on the marketplaces. Each milestone has a **Definition of Done (DoD)** — don't move on until it's green. Discipline mirrors `anonymize-mcp` (272 tests shipped).
 
-## Pre-flight (start of first coding session)
+## Pre-flight (start of first coding session) — *historical; how it actually went differs*
 
-1. **Enable WSL mirrored networking** (see `04-CONFIG-AND-DEPLOY.md §3`) — write `C:\Users\micha\.wslconfig`, `wsl --shutdown` from Windows, reopen. Verify: `ping 192.168.0.101` and `curl http://192.168.0.101/shelly` succeed from WSL. *Without this only the Cloud backend is testable.*
-2. **Scaffold:** `uv init`, `pyproject.toml` (entry point `shelly-mcp`), pin `fastmcp`, `aioshelly`, `zeroconf`, `pydantic`, `pyyaml`, `aiohttp`. Dev: `pytest`, `pytest-asyncio`, `ruff`, `mypy`.
+> Superseded during the build: WSL mirrored networking was never needed (the LAN was flattened onto one subnet instead — see the 2026-06-09 progress note), and `aioshelly` was dropped in favour of raw HTTP (ADR-006).
+
+1. ~~**Enable WSL mirrored networking**~~ (see `04-CONFIG-AND-DEPLOY.md §3`) — not done; subnet flattening solved local access without touching WSL networking.
+2. **Scaffold:** `uv init`, `pyproject.toml` (entry point `shelly-mcp`), pin `fastmcp`, `zeroconf`, `pydantic`, `pyyaml`, `aiohttp`. Dev: `pytest`, `pytest-asyncio`, `ruff`, `mypy`.
 3. Drop in `LICENSE` (see §License), `README.md` skeleton, `.gitignore`, GitHub repo `Buggy1111/shelly-mcp` (private until v1.0 polish, like silikon-manager).
 
 ## Milestones
@@ -49,7 +51,7 @@
 
 ### M5 — Polish, test, publish v1.0
 - Eval suite (§Eval), full unit+contract coverage, `ruff`+`mypy` clean.
-- `README.md` (marketplace face), `glama.json`, `server.json` (`io.github.buggy1111/shelly-mcp`), CHANGELOG.
+- `README.md` (marketplace face), `glama.json`, `server.json` (`io.github.Buggy1111/shelly-mcp` — case-sensitive), CHANGELOG.
 - `code-audit` + `owasp-security` on the diff; confirm no secrets, pinned deps.
 - PyPI trusted-publish → MCP Registry → verify PulseMCP pickup → Glama → awesome-mcp PR → mcp.so.
 - **DoD:** `uvx shelly-mcp` works from a clean machine; listed on Registry + Glama (target quality A).
@@ -61,7 +63,7 @@
 
 ## License
 
-**Recommendation: MIT** (or Apache-2.0 if patent grant matters). Rationale: this is community infrastructure meant for **maximum adoption** across the Shelly ecosystem — a permissive license removes all friction for users, integrators, and marketplace listing. This differs deliberately from `anonymize-mcp` (which was non-commercial because of the ÚFAL endorsement constraint); here there's no such constraint. **→ one open decision for Michal: MIT vs Apache-2.0.**
+**Decided: MIT** (in `LICENSE` + `pyproject.toml`). Rationale: this is community infrastructure meant for **maximum adoption** across the Shelly ecosystem — a permissive license removes all friction for users, integrators, and marketplace listing. This differs deliberately from `anonymize-mcp` (which was non-commercial because of the ÚFAL endorsement constraint); here there's no such constraint.
 
 ## Trademark / naming
 

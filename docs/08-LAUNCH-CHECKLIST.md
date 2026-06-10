@@ -7,11 +7,16 @@
 
 ---
 
-## 0. Pre-flight — verified locally 2026-06-09 (no push)
+## 0. Pre-flight — verified locally 2026-06-09, re-verified 2026-06-10 after the audit fixes
 
-- [x] **Tests green:** `205 passed` (`.venv/bin/python -m pytest -q`).
+> **2026-06-10:** a pre-launch audit found two confirm-gate bypasses (destructive methods via
+> `schedule_create`; `Script.Eval`/`SetAuth` via scenes) — fixed on `auto/audit-fixes` along with
+> config redaction, webhook URL validation, a circular import, and a docs pass. Re-run `uv build`
+> before publishing — the previously built `dist/` artifacts predate these fixes.
+
+- [x] **Tests green:** `243 passed` (`uv run pytest -q`).
 - [x] **Lint clean:** `ruff check .` → all checks passed.
-- [x] **Types clean:** `mypy` (`--strict`) → no issues in 48 source files.
+- [x] **Types clean:** `mypy` (`--strict`) → no issues in 49 source files.
 - [x] **Tool surface matches docs:** 47 tools + 2 resources (1 static + 1 template) + 3 prompts,
       confirmed from the live-registered server, not just the docstrings.
 - [x] **Package builds:** `uv build` → `shelly_mcp-0.1.0-py3-none-any.whl` + `.tar.gz`.
@@ -22,7 +27,7 @@
       config** returns a clean, actionable error (no traceback), not a crash. `serverInfo.version`
       correctly reports `0.1.0`.
 - [x] **Version consistent:** `0.1.0` across `pyproject.toml`, `server.json`, `__init__.py`.
-- [x] **Docs reconciled:** test count (199 → 204) and competitive section refreshed.
+- [x] **Docs reconciled:** test count (199 → 243 after the 2026-06-10 audit fixes) and competitive section refreshed.
 
 > **Nothing below was done autonomously** — these are the push/account-gated steps for the morning.
 
