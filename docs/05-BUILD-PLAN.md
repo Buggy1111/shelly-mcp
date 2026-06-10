@@ -12,7 +12,7 @@
 
 ## Milestones
 
-> **Progress (2026-06-09):** **M0–M5 + scenes + v1.1 automation complete; local path live-verified on real hardware; pushed to a private repo.** 47 tools + 2 resources + 3 prompts, 205 tests, ruff + `mypy --strict` clean, ~3.4K LOC.
+> **Progress (2026-06-10):** **M0–M5 + scenes + v1.1 automation complete; local path live-verified on real hardware; pre-launch audit fixes landed.** 47 tools + 2 resources + 3 prompts, 243 tests, ruff + `mypy --strict` clean, ~3.3K LOC.
 > - **M0** ✅ scaffold + `CloudBackend` (live-verified, 4 real devices).
 > - **M1** ✅ `Normalizer` (transport-aware energy, ADR-005), `DeviceRegistry` (local-first), `methods.py` (classification + Gen1 REST map), read tools incl. `shelly_discover`/`get_config`/`list_methods`.
 > - **M2** ✅ control tools (switch/light/cover), generic `rpc`/`rpc_write` (confirm + data-loss gates), `audit.py`, **local backends** `Gen2RpcBackend` (raw `/rpc` + Digest) / `Gen1RestBackend` (raw REST + Basic) per **ADR-006** (raw HTTP, not aioshelly WS/CoAP), mDNS discovery.

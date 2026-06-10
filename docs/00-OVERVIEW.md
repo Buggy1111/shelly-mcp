@@ -1,6 +1,6 @@
 # Shelly MCP Server — Overview & Scope
 
-> **Status:** **M0–M5 + scenes + v1.1 automation tools complete; local (Gen1+Gen2) & cloud paths live-verified on real hardware (2026-06-09).** 47 tools + 2 resources + 3 prompts, 205 tests, ruff + `mypy --strict` clean. Pushed to a **private** GitHub repo; public publishing still pending — see `05-BUILD-PLAN.md`.
+> **Status:** **M0–M5 + scenes + v1.1 automation tools complete; local (Gen1+Gen2) & cloud paths live-verified on real hardware (2026-06-09); pre-launch audit fixes landed 2026-06-10.** 47 tools + 2 resources + 3 prompts, 243 tests, ruff + `mypy --strict` clean. Pushed to a **private** GitHub repo; public publishing still pending — see `08-LAUNCH-CHECKLIST.md`.
 > **Date:** 2026-06-09 (design started 2026-06-08)
 
 ## 1. What this is
