@@ -3,7 +3,9 @@
 All notable changes to `shelly-mcp` are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [0.1.0] — 2026-06-10
+
+Initial public release.
 
 ### Added
 - **Backends:** `CloudBackend` (Shelly Cloud, 1 req/s paced), `Gen2RpcBackend`
