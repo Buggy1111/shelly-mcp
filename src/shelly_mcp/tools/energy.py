@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from shelly_mcp.app import mcp, resolve_status
+from shelly_mcp.app import backend_errors, mcp, resolve_status
 
 _ENERGY_FIELDS = (
     "power_w", "voltage", "current", "pf", "freq", "energy_total_wh", "ret_energy_total_wh",
@@ -18,6 +18,7 @@ _ENERGY_FIELDS = (
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
+@backend_errors
 async def shelly_energy_live(device: str, channel: int | None = None) -> dict[str, Any]:
     """Live power/energy per channel: power_w, voltage, current, pf, freq, totals.
 
@@ -35,6 +36,7 @@ async def shelly_energy_live(device: str, channel: int | None = None) -> dict[st
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
+@backend_errors
 async def shelly_energy_history(device: str, channel: int | None = None) -> dict[str, Any]:
     """Best-effort energy history: lifetime totals plus any per-minute series the device
     exposes in its status; notes when richer history needs a local connection.

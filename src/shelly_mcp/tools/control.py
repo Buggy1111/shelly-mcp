@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from shelly_mcp.app import execute_and_audit, mcp, resolve_status
+from shelly_mcp.app import backend_errors, execute_and_audit, mcp, resolve_status
 from shelly_mcp.normalize import NormalizedStatus
 
 # Light component key prefix -> the RPC method that drives it (Gen2). Gen1 maps all
@@ -30,6 +30,7 @@ def _component_for(
 
 
 @mcp.tool(annotations={"idempotentHint": True})
+@backend_errors
 async def shelly_switch_set(
     device: str, on: bool, channel: int = 0, toggle_after_s: int | None = None
 ) -> dict[str, Any]:
@@ -45,6 +46,7 @@ async def shelly_switch_set(
 
 
 @mcp.tool
+@backend_errors
 async def shelly_switch_toggle(device: str, channel: int = 0) -> dict[str, Any]:
     """Toggle a switch/relay channel. Returns the post-action ``ChannelState``. Audit-logged."""
     await execute_and_audit(device, "Switch.Toggle", {"id": channel})
@@ -52,6 +54,7 @@ async def shelly_switch_toggle(device: str, channel: int = 0) -> dict[str, Any]:
 
 
 @mcp.tool(annotations={"idempotentHint": True})
+@backend_errors
 async def shelly_light_set(
     device: str,
     channel: int = 0,
@@ -93,6 +96,7 @@ async def shelly_light_set(
 
 
 @mcp.tool
+@backend_errors
 async def shelly_cover_move(
     device: str, action: str, channel: int = 0, position: int | None = None
 ) -> dict[str, Any]:

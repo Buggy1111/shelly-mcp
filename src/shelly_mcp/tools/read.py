@@ -35,6 +35,7 @@ async def shelly_discover(timeout_s: float = 5.0, use_cloud: bool = True) -> dic
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
+@backend_errors
 async def shelly_list_devices() -> dict[str, Any]:
     """List every Shelly device known to this server (configured + cloud account).
 
@@ -46,6 +47,7 @@ async def shelly_list_devices() -> dict[str, Any]:
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
+@backend_errors
 async def shelly_get_info(device: str) -> dict[str, Any]:
     """Identify one device (generation, model, firmware, online state, capabilities).
 
@@ -61,6 +63,7 @@ async def shelly_get_info(device: str) -> dict[str, Any]:
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
+@backend_errors
 async def shelly_get_status(device: str, component: str | None = None) -> dict[str, Any]:
     """Get a device's **normalized** live status (Gen1/Gen2/Cloud folded into one shape).
 

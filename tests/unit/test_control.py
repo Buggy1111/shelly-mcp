@@ -65,3 +65,10 @@ async def test_mutations_are_audit_logged(wire: Any, tmp_path: Path) -> None:
     await shelly_switch_set.fn(device="dev", on=False)
     lines = [json.loads(line) for line in (tmp_path / "audit.jsonl").read_text().splitlines()]
     assert any(e["method"] == "Switch.Set" and e["ok"] for e in lines)
+
+
+async def test_unreachable_device_returns_error_dict_not_exception(wire: Any) -> None:
+    """Control tools share the uniform {"error": msg} shape with every other tool."""
+    wire.fail_methods.add("Switch.Set")
+    out = await shelly_switch_set.fn(device="dev", on=True)
+    assert "error" in out and "Switch.Set failed" in out["error"]
