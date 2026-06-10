@@ -3,7 +3,7 @@
 All notable changes to `shelly-mcp` are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [0.1.2] — 2026-06-10
 
 ### Fixed
 - `shelly_list_devices` now reports each device's *command routing* instead of the

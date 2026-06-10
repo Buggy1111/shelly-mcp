@@ -1,6 +1,6 @@
 [project]
 name = "shelly-mcp"
-version = "0.1.1"
+version = "0.1.2"
 description = "MCP server for the entire Shelly smart-home ecosystem (Gen1-Gen4 + BLU) — local-first, with cloud fallback. Unofficial community project."
 authors = [{ name = "Michal Bugy", email = "michalbugy12@gmail.com" }]
 readme = "README.md"
