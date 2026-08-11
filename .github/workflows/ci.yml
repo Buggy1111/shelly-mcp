@@ -42,7 +42,7 @@ jobs:
 
       - name: Import smoke test
         run: |
-          python -c "import asyncio; from shelly_mcp.server import mcp; print('tools:', len(asyncio.run(mcp.get_tools())), '| version:', __import__('shelly_mcp').__version__)"
+          python -c "import asyncio; from shelly_mcp.server import mcp; print('tools:', len(asyncio.run(mcp.list_tools())), '| version:', __import__('shelly_mcp').__version__)"
 
       - name: Run test suite (offline — no live device needed)
         run: python -m pytest -q
