@@ -10,20 +10,20 @@ from shelly_mcp.tools.generic import shelly_list_methods, shelly_rpc, shelly_rpc
 
 
 async def test_rpc_allows_read_method(wire: Any) -> None:
-    out = await shelly_rpc.fn(device="dev", method="Shelly.GetStatus")
+    out = await shelly_rpc(device="dev", method="Shelly.GetStatus")
     assert "error" not in out
     assert ("Shelly.GetStatus", {}) in wire.calls
 
 
 async def test_rpc_rejects_write_method(wire: Any) -> None:
-    out = await shelly_rpc.fn(device="dev", method="Switch.Set", params={"on": True})
+    out = await shelly_rpc(device="dev", method="Switch.Set", params={"on": True})
     assert "error" in out
     assert "shelly_rpc_write" in out["error"]
     assert wire.calls == []  # never reached the device
 
 
 async def test_rpc_write_refuses_without_confirm(wire: Any) -> None:
-    out = await shelly_rpc_write.fn(
+    out = await shelly_rpc_write(
         device="dev", method="Switch.Set", params={"id": 0, "on": False}
     )
     assert out["confirmed"] is False
@@ -32,7 +32,7 @@ async def test_rpc_write_refuses_without_confirm(wire: Any) -> None:
 
 
 async def test_rpc_write_executes_with_confirm(wire: Any) -> None:
-    out = await shelly_rpc_write.fn(
+    out = await shelly_rpc_write(
         device="dev", method="Switch.Set", params={"id": 0, "on": False}, confirm=True
     )
     assert out["confirmed"] is True
@@ -40,7 +40,7 @@ async def test_rpc_write_executes_with_confirm(wire: Any) -> None:
 
 
 async def test_rpc_write_rejects_read_method(wire: Any) -> None:
-    out = await shelly_rpc_write.fn(device="dev", method="Shelly.GetStatus", confirm=True)
+    out = await shelly_rpc_write(device="dev", method="Shelly.GetStatus", confirm=True)
     assert "error" in out
     assert "shelly_rpc" in out["error"]
     assert wire.calls == []
@@ -48,14 +48,14 @@ async def test_rpc_write_rejects_read_method(wire: Any) -> None:
 
 async def test_destructive_needs_data_loss_ack(wire: Any) -> None:
     # confirm alone is not enough for an irreversible method.
-    out = await shelly_rpc_write.fn(device="dev", method="Shelly.FactoryReset", confirm=True)
+    out = await shelly_rpc_write(device="dev", method="Shelly.FactoryReset", confirm=True)
     assert out["confirmed"] is False
     assert out["destructive"] is True
     assert wire.calls == []
 
 
 async def test_destructive_executes_with_both_gates(wire: Any) -> None:
-    out = await shelly_rpc_write.fn(
+    out = await shelly_rpc_write(
         device="dev",
         method="Shelly.FactoryReset",
         params={"i_understand_data_loss": True},
@@ -69,11 +69,11 @@ async def test_destructive_executes_with_both_gates(wire: Any) -> None:
 
 
 async def test_rpc_write_audits(wire: Any, tmp_path: Path) -> None:
-    await shelly_rpc_write.fn(device="dev", method="Switch.Set", params={"on": True}, confirm=True)
+    await shelly_rpc_write(device="dev", method="Switch.Set", params={"on": True}, confirm=True)
     lines = [json.loads(line) for line in (tmp_path / "audit.jsonl").read_text().splitlines()]
     assert any(e["method"] == "Switch.Set" for e in lines)
 
 
 async def test_list_methods(wire: Any) -> None:
-    out = await shelly_list_methods.fn(device="dev")
+    out = await shelly_list_methods(device="dev")
     assert "Switch.Set" in out["methods"]

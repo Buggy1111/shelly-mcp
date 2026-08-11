@@ -39,58 +39,58 @@ from shelly_mcp.tools.webhook import (
 
 # ----------------------------------------------------------------------- KVS
 async def test_kvs_list(wire: Any) -> None:
-    out = await shelly_kvs_list.fn(device="dev")
+    out = await shelly_kvs_list(device="dev")
     assert out["keys"] == {"cfg": "etag1"} and out["rev"] == 3
 
 
 async def test_kvs_get(wire: Any) -> None:
-    out = await shelly_kvs_get.fn(device="dev", key="cfg")
+    out = await shelly_kvs_get(device="dev", key="cfg")
     assert out["value"] == "hello" and out["etag"] == "etag1"
 
 
 async def test_kvs_set_audited(wire: Any) -> None:
-    out = await shelly_kvs_set.fn(device="dev", key="cfg", value={"a": 1})
+    out = await shelly_kvs_set(device="dev", key="cfg", value={"a": 1})
     assert "set" in out
     assert ("KVS.Set", {"key": "cfg", "value": {"a": 1}}) in wire.calls
 
 
 async def test_kvs_set_rejects_blank_key(wire: Any) -> None:
-    assert "error" in await shelly_kvs_set.fn(device="dev", key="", value=1)
+    assert "error" in await shelly_kvs_set(device="dev", key="", value=1)
 
 
 async def test_backend_error_surfaces_as_error_dict(wire: Any) -> None:
     # The @backend_errors decorator turns a raised BackendError into a uniform {"error": …}.
     wire.fail_methods.add("KVS.List")
-    out = await shelly_kvs_list.fn(device="dev")
+    out = await shelly_kvs_list(device="dev")
     assert "error" in out and "KVS.List" in out["error"]
     assert "keys" not in out  # decorator short-circuits to the error dict
 
 
 async def test_kvs_key_name_not_redacted_in_audit(wire: Any, tmp_path: Path) -> None:
     # A KVS slot name is not a secret — it must stay readable in the audit log.
-    await shelly_kvs_set.fn(device="dev", key="last_run", value=1)
+    await shelly_kvs_set(device="dev", key="last_run", value=1)
     audit = (tmp_path / "audit.jsonl").read_text()
     assert "last_run" in audit
     assert '"key": "***"' not in audit
 
 
 async def test_kvs_delete_confirm_gate(wire: Any) -> None:
-    refused = await shelly_kvs_delete.fn(device="dev", key="cfg")
+    refused = await shelly_kvs_delete(device="dev", key="cfg")
     assert refused["confirmed"] is False
     assert not any(m == "KVS.Delete" for m, _ in wire.calls)
-    ok = await shelly_kvs_delete.fn(device="dev", key="cfg", confirm=True)
+    ok = await shelly_kvs_delete(device="dev", key="cfg", confirm=True)
     assert ok["confirmed"] is True
     assert any(m == "KVS.Delete" for m, _ in wire.calls)
 
 
 # ------------------------------------------------------------------- Webhook
 async def test_webhook_list(wire: Any) -> None:
-    out = await shelly_webhook_list.fn(device="dev")
+    out = await shelly_webhook_list(device="dev")
     assert out["hooks"][0]["event"] == "switch.on"
 
 
 async def test_webhook_create_ok(wire: Any) -> None:
-    out = await shelly_webhook_create.fn(
+    out = await shelly_webhook_create(
         device="dev", event="switch.on", cid=0, urls=["http://x/y"]
     )
     assert "created" in out
@@ -99,55 +99,55 @@ async def test_webhook_create_ok(wire: Any) -> None:
 
 
 async def test_webhook_create_rejects_no_urls(wire: Any) -> None:
-    out = await shelly_webhook_create.fn(device="dev", event="switch.on", cid=0, urls=[])
+    out = await shelly_webhook_create(device="dev", event="switch.on", cid=0, urls=[])
     assert "error" in out
 
 
 async def test_webhook_create_rejects_too_many_urls(wire: Any) -> None:
-    out = await shelly_webhook_create.fn(
+    out = await shelly_webhook_create(
         device="dev", event="switch.on", cid=0, urls=[f"http://u/{i}" for i in range(6)]
     )
     assert "error" in out and "5 urls" in out["error"]
 
 
 async def test_webhook_update_partial(wire: Any) -> None:
-    await shelly_webhook_update.fn(device="dev", id=1, enable=False)
+    await shelly_webhook_update(device="dev", id=1, enable=False)
     _, params = next((m, p) for m, p in wire.calls if m == "Webhook.Update")
     assert params == {"id": 1, "enable": False}
 
 
 async def test_webhook_delete_confirm_gate(wire: Any) -> None:
-    assert (await shelly_webhook_delete.fn(device="dev", id=1))["confirmed"] is False
-    ok = await shelly_webhook_delete.fn(device="dev", id=1, confirm=True)
+    assert (await shelly_webhook_delete(device="dev", id=1))["confirmed"] is False
+    ok = await shelly_webhook_delete(device="dev", id=1, confirm=True)
     assert ok["confirmed"] is True
 
 
 # -------------------------------------------------------------------- Script
 async def test_script_list(wire: Any) -> None:
-    out = await shelly_script_list.fn(device="dev")
+    out = await shelly_script_list(device="dev")
     assert out["scripts"][0]["id"] == 1
 
 
 async def test_script_get_code_reassembles(wire: Any) -> None:
-    out = await shelly_script_get_code.fn(device="dev", id=1)
+    out = await shelly_script_get_code(device="dev", id=1)
     assert out["code"] == "let x = 1;"
 
 
 async def test_script_create_audited(wire: Any) -> None:
-    out = await shelly_script_create.fn(device="dev", name="blink")
+    out = await shelly_script_create(device="dev", name="blink")
     assert "created" in out
     assert ("Script.Create", {"name": "blink"}) in wire.calls
 
 
 async def test_script_put_code_confirm_gate(wire: Any) -> None:
-    refused = await shelly_script_put_code.fn(device="dev", id=1, code="print(1)")
+    refused = await shelly_script_put_code(device="dev", id=1, code="print(1)")
     assert refused["confirmed"] is False
     assert not any(m == "Script.PutCode" for m, _ in wire.calls)
 
 
 async def test_script_put_code_chunks_large_code(wire: Any) -> None:
     big = "x" * 2500  # > 2 chunks of 1024
-    out = await shelly_script_put_code.fn(device="dev", id=1, code=big, confirm=True)
+    out = await shelly_script_put_code(device="dev", id=1, code=big, confirm=True)
     put_calls = [p for m, p in wire.calls if m == "Script.PutCode"]
     assert len(put_calls) == 3  # 1024 + 1024 + 452
     assert put_calls[0]["append"] is False  # first replaces
@@ -156,61 +156,61 @@ async def test_script_put_code_chunks_large_code(wire: Any) -> None:
 
 
 async def test_script_put_code_rejects_blank(wire: Any) -> None:
-    assert "error" in await shelly_script_put_code.fn(device="dev", id=1, code="", confirm=True)
+    assert "error" in await shelly_script_put_code(device="dev", id=1, code="", confirm=True)
 
 
 async def test_script_start_stop_audited(wire: Any) -> None:
-    await shelly_script_start.fn(device="dev", id=1)
+    await shelly_script_start(device="dev", id=1)
     assert ("Script.Start", {"id": 1}) in wire.calls
 
 
 async def test_script_eval_confirm_gate(wire: Any) -> None:
-    refused = await shelly_script_eval.fn(device="dev", id=1, code="1+1")
+    refused = await shelly_script_eval(device="dev", id=1, code="1+1")
     assert refused["confirmed"] is False
-    ok = await shelly_script_eval.fn(device="dev", id=1, code="1+1", confirm=True)
+    ok = await shelly_script_eval(device="dev", id=1, code="1+1", confirm=True)
     assert ok["confirmed"] is True
     assert any(m == "Script.Eval" for m, _ in wire.calls)
 
 
 async def test_script_delete_confirm_gate(wire: Any) -> None:
-    assert (await shelly_script_delete.fn(device="dev", id=1))["confirmed"] is False
-    ok = await shelly_script_delete.fn(device="dev", id=1, confirm=True)
+    assert (await shelly_script_delete(device="dev", id=1))["confirmed"] is False
+    ok = await shelly_script_delete(device="dev", id=1, confirm=True)
     assert ok["confirmed"] is True
 
 
 # ------------------------------------------------------------------- Virtual
 async def test_virtual_list(wire: Any) -> None:
-    out = await shelly_virtual_list.fn(device="dev")
+    out = await shelly_virtual_list(device="dev")
     assert out["components"][0]["key"] == "boolean:200"
     assert ("Shelly.GetComponents", {"dynamic_only": True}) in wire.calls
 
 
 async def test_virtual_add_audited(wire: Any) -> None:
-    out = await shelly_virtual_add.fn(device="dev", type="boolean", config={"name": "flag"})
+    out = await shelly_virtual_add(device="dev", type="boolean", config={"name": "flag"})
     assert "added" in out
     _, params = next((m, p) for m, p in wire.calls if m == "Virtual.Add")
     assert params["type"] == "boolean" and params["config"] == {"name": "flag"}
 
 
 async def test_virtual_add_rejects_blank_type(wire: Any) -> None:
-    assert "error" in await shelly_virtual_add.fn(device="dev", type="")
+    assert "error" in await shelly_virtual_add(device="dev", type="")
 
 
 async def test_virtual_delete_validates_key(wire: Any) -> None:
-    out = await shelly_virtual_delete.fn(device="dev", key="notakey", confirm=True)
+    out = await shelly_virtual_delete(device="dev", key="notakey", confirm=True)
     assert "error" in out
 
 
 async def test_virtual_delete_confirm_gate(wire: Any) -> None:
-    assert (await shelly_virtual_delete.fn(device="dev", key="boolean:200"))["confirmed"] is False
-    ok = await shelly_virtual_delete.fn(device="dev", key="boolean:200", confirm=True)
+    assert (await shelly_virtual_delete(device="dev", key="boolean:200"))["confirmed"] is False
+    ok = await shelly_virtual_delete(device="dev", key="boolean:200", confirm=True)
     assert ok["confirmed"] is True
 
 
 async def test_webhook_create_rejects_non_http_urls(wire: Any) -> None:
     """The device will call these URLs — anything but absolute http(s) is refused."""
     for url in ("ftp://h/x", "javascript:alert(1)", "//host/x", "host/path", ""):
-        out = await shelly_webhook_create.fn(
+        out = await shelly_webhook_create(
             device="dev", event="switch.on", cid=0, urls=[url]
         )
         assert "error" in out, url
@@ -218,6 +218,6 @@ async def test_webhook_create_rejects_non_http_urls(wire: Any) -> None:
 
 
 async def test_webhook_update_rejects_non_http_urls(wire: Any) -> None:
-    out = await shelly_webhook_update.fn(device="dev", id=1, urls=["gopher://h/x"])
+    out = await shelly_webhook_update(device="dev", id=1, urls=["gopher://h/x"])
     assert "must be an absolute http(s) URL" in out["error"]
     assert wire.calls == []

@@ -62,30 +62,30 @@ def test_store_write_is_atomic_no_temp_left(tmp_path: Path) -> None:
 
 # ------------------------------------------------------------------- create
 async def test_create_and_get_round_trip(wire: Any, scenes_file: Path) -> None:
-    out = await shelly_scene_create.fn(name="film", actions=_FILM, description="Movie night")
+    out = await shelly_scene_create(name="film", actions=_FILM, description="Movie night")
     assert out["saved"] == "film"
     assert out["actions"] == 2
-    got = await shelly_scene_get.fn(name="film")
+    got = await shelly_scene_get(name="film")
     assert got["description"] == "Movie night"
     assert [a["method"] for a in got["actions"]] == ["Switch.Set", "Light.Set"]
 
 
 async def test_create_rejects_unknown_device(wire: Any, scenes_file: Path) -> None:
-    out = await shelly_scene_create.fn(
+    out = await shelly_scene_create(
         name="x", actions=[{"device": "ghost", "method": "Switch.Set"}]
     )
     assert "error" in out and "unknown device" in out["error"]
 
 
 async def test_create_rejects_read_method(wire: Any, scenes_file: Path) -> None:
-    out = await shelly_scene_create.fn(
+    out = await shelly_scene_create(
         name="x", actions=[{"device": "dev", "method": "Shelly.GetStatus"}]
     )
     assert "error" in out and "read" in out["error"]
 
 
 async def test_create_rejects_destructive_method(wire: Any, scenes_file: Path) -> None:
-    out = await shelly_scene_create.fn(
+    out = await shelly_scene_create(
         name="x", actions=[{"device": "dev", "method": "Shelly.FactoryReset"}]
     )
     assert "error" in out and "destructive" in out["error"]
@@ -95,14 +95,14 @@ async def test_create_rejects_gate_bypassing_writes(wire: Any, scenes_file: Path
     """Script.Eval / SetAuth are WRITE by classification, but a confirm-free scene
     running them would bypass the gates their dedicated tools enforce."""
     for method in ("Script.Eval", "Script.PutCode", "Shelly.SetAuth", "Webhook.Create"):
-        out = await shelly_scene_create.fn(
+        out = await shelly_scene_create(
             name="x", actions=[{"device": "dev", "method": method}]
         )
         assert "not allowed in a scene" in out["error"], method
 
 
 async def test_create_warns_on_toggle(wire: Any, scenes_file: Path) -> None:
-    out = await shelly_scene_create.fn(
+    out = await shelly_scene_create(
         name="x", actions=[{"device": "dev", "method": "Switch.Toggle"}]
     )
     assert out["saved"] == "x"
@@ -110,37 +110,37 @@ async def test_create_warns_on_toggle(wire: Any, scenes_file: Path) -> None:
 
 
 async def test_create_rejects_empty_actions(wire: Any, scenes_file: Path) -> None:
-    assert "error" in await shelly_scene_create.fn(name="x", actions=[])
+    assert "error" in await shelly_scene_create(name="x", actions=[])
 
 
 async def test_create_overwrite_guard(wire: Any, scenes_file: Path) -> None:
-    await shelly_scene_create.fn(name="film", actions=_FILM)
-    blocked = await shelly_scene_create.fn(name="film", actions=_FILM)
+    await shelly_scene_create(name="film", actions=_FILM)
+    blocked = await shelly_scene_create(name="film", actions=_FILM)
     assert "error" in blocked and "already exists" in blocked["error"]
-    ok = await shelly_scene_create.fn(name="film", actions=_FILM, overwrite=True)
+    ok = await shelly_scene_create(name="film", actions=_FILM, overwrite=True)
     assert ok["saved"] == "film"
 
 
 async def test_create_rejects_blank_name(wire: Any, scenes_file: Path) -> None:
-    assert "error" in await shelly_scene_create.fn(name="", actions=_FILM)
+    assert "error" in await shelly_scene_create(name="", actions=_FILM)
 
 
 # --------------------------------------------------------------------- list
 async def test_list_reports_counts(wire: Any, scenes_file: Path) -> None:
-    await shelly_scene_create.fn(name="film", actions=_FILM)
-    out = await shelly_scene_list.fn()
+    await shelly_scene_create(name="film", actions=_FILM)
+    out = await shelly_scene_list()
     assert out["scenes"] == [{"name": "film", "description": None, "actions": 2}]
 
 
 async def test_get_unknown_scene(wire: Any, scenes_file: Path) -> None:
-    out = await shelly_scene_get.fn(name="nope")
+    out = await shelly_scene_get(name="nope")
     assert "error" in out and out["available"] == []
 
 
 # ---------------------------------------------------------------------- run
 async def test_run_all_ok(wire: Any, scenes_file: Path) -> None:
-    await shelly_scene_create.fn(name="film", actions=_FILM)
-    out = await shelly_scene_run.fn(name="film")
+    await shelly_scene_create(name="film", actions=_FILM)
+    out = await shelly_scene_run(name="film")
     assert out["status"] == "ok"
     assert out["ok"] == 2 and out["total"] == 2
     assert all(r["ok"] for r in out["results"])
@@ -150,8 +150,8 @@ async def test_run_all_ok(wire: Any, scenes_file: Path) -> None:
 
 async def test_run_partial(wire: Any, scenes_file: Path) -> None:
     wire.fail_methods.add("Light.Set")
-    await shelly_scene_create.fn(name="film", actions=_FILM)
-    out = await shelly_scene_run.fn(name="film")
+    await shelly_scene_create(name="film", actions=_FILM)
+    out = await shelly_scene_run(name="film")
     assert out["status"] == "partial"
     assert out["ok"] == 1 and out["total"] == 2
     failed = [r for r in out["results"] if not r["ok"]]
@@ -160,8 +160,8 @@ async def test_run_partial(wire: Any, scenes_file: Path) -> None:
 
 async def test_run_failed(wire: Any, scenes_file: Path) -> None:
     wire.fail_methods.update({"Switch.Set", "Light.Set"})
-    await shelly_scene_create.fn(name="film", actions=_FILM)
-    out = await shelly_scene_run.fn(name="film")
+    await shelly_scene_create(name="film", actions=_FILM)
+    out = await shelly_scene_run(name="film")
     assert out["status"] == "failed"
     assert out["ok"] == 0
 
@@ -169,34 +169,34 @@ async def test_run_failed(wire: Any, scenes_file: Path) -> None:
 async def test_run_continues_past_failure(wire: Any, scenes_file: Path) -> None:
     # First action fails — the rest must still run (best-effort, no abort).
     wire.fail_methods.add("Switch.Set")
-    await shelly_scene_create.fn(name="film", actions=_FILM)
-    await shelly_scene_run.fn(name="film")
+    await shelly_scene_create(name="film", actions=_FILM)
+    await shelly_scene_run(name="film")
     assert "Light.Set" in [m for m, _ in wire.calls]  # ran despite the earlier failure
 
 
 async def test_run_audits_actions(wire: Any, scenes_file: Path, tmp_path: Path) -> None:
-    await shelly_scene_create.fn(name="film", actions=_FILM)
-    await shelly_scene_run.fn(name="film")
+    await shelly_scene_create(name="film", actions=_FILM)
+    await shelly_scene_run(name="film")
     audit_text = (tmp_path / "audit.jsonl").read_text()
     assert "Switch.Set" in audit_text and "Light.Set" in audit_text
 
 
 async def test_run_unknown_scene(wire: Any, scenes_file: Path) -> None:
-    out = await shelly_scene_run.fn(name="nope")
+    out = await shelly_scene_run(name="nope")
     assert "error" in out
 
 
 # ------------------------------------------------------------------- delete
 async def test_delete_confirm_gate(wire: Any, scenes_file: Path) -> None:
-    await shelly_scene_create.fn(name="film", actions=_FILM)
-    refused = await shelly_scene_delete.fn(name="film")
+    await shelly_scene_create(name="film", actions=_FILM)
+    refused = await shelly_scene_delete(name="film")
     assert refused["confirmed"] is False
     assert refused["would_delete"] == "film"  # preview names the scene, not a device
     assert "film" in load_scenes(scenes_file).scenes  # still there
-    ok = await shelly_scene_delete.fn(name="film", confirm=True)
+    ok = await shelly_scene_delete(name="film", confirm=True)
     assert ok["deleted"] == "film"
     assert "film" not in load_scenes(scenes_file).scenes
 
 
 async def test_delete_unknown_scene(wire: Any, scenes_file: Path) -> None:
-    assert "error" in await shelly_scene_delete.fn(name="nope", confirm=True)
+    assert "error" in await shelly_scene_delete(name="nope", confirm=True)

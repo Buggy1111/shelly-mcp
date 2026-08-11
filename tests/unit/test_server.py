@@ -1,6 +1,7 @@
 """Unit tests for the M1 read tools, driven through an injected registry (no network).
 
-Tools are FastMCP ``FunctionTool`` objects; ``.fn`` is the underlying coroutine.
+``@mcp.tool``-decorated functions are called directly (fastmcp 3.x returns the
+original coroutine, not a wrapper object).
 """
 
 from __future__ import annotations
@@ -66,7 +67,7 @@ def _wire_registry(tmp_path: Any) -> Any:
 def test_version_health_check() -> None:
     from shelly_mcp import __version__
 
-    out = shelly_version.fn()
+    out = shelly_version()
     assert out["name"] == "shelly-mcp"
     assert out["version"] == __version__
 
@@ -82,20 +83,20 @@ def test_server_reports_own_version_not_framework() -> None:
 
 
 async def test_list_devices_tool() -> None:
-    out = await shelly_list_devices.fn()
+    out = await shelly_list_devices()
     assert out["count"] == 2
     ids = {d["id"] for d in out["devices"]}
     assert ids == {"80646fe72f38", "3ce90ed7c30e"}
 
 
 async def test_get_info_tool_includes_capabilities() -> None:
-    out = await shelly_get_info.fn(device="80646fe72f38")
+    out = await shelly_get_info(device="80646fe72f38")
     assert out["identity"]["model"] == "SNPL-00112EU"
     assert out["capabilities"]["has_voltage_current"] is True
 
 
 async def test_get_status_gen2_normalized() -> None:
-    out = await shelly_get_status.fn(device="80646fe72f38")
+    out = await shelly_get_status(device="80646fe72f38")
     assert out["gen"] == 2
     ch = out["channels"]["switch:0"]
     assert ch["output"] is True
@@ -106,27 +107,27 @@ async def test_get_status_gen2_normalized() -> None:
 async def test_get_status_gen1_cloud_energy_is_wh_passthrough() -> None:
     # mycka is cloud-backed: Shelly Cloud already returns Gen1 total in Wh, so the
     # tool must NOT ÷60. 548723 Wh == ~549 kWh, the real dishwasher reading (ADR-005).
-    out = await shelly_get_status.fn(device="3ce90ed7c30e")
+    out = await shelly_get_status(device="3ce90ed7c30e")
     assert out["gen"] == 1
     ch = out["channels"]["switch:0"]
     assert ch["energy_total_wh"] == 548723.0
 
 
 async def test_get_status_component_filter_narrows_and_scopes_raw() -> None:
-    out = await shelly_get_status.fn(device="80646fe72f38", component="switch:0")
+    out = await shelly_get_status(device="80646fe72f38", component="switch:0")
     assert set(out["channels"]) == {"switch:0"}
     assert out["raw"] == TELEVIZE["switch:0"]  # raw scoped to the one component
 
 
 async def test_list_components_tool() -> None:
-    out = await shelly_list_components.fn(device="3ce90ed7c30e")
+    out = await shelly_list_components(device="3ce90ed7c30e")
     assert "relay:0" in out["components"]
     assert "meter:0" in out["components"]
 
 
 async def test_get_config_masks_device_credentials(wire: Any) -> None:
     """Gen1-style cleartext Wi-Fi/MQTT credentials must never reach the model."""
-    out = await shelly_get_config.fn(device="dev")
+    out = await shelly_get_config(device="dev")
     assert out["config"]["wifi_sta"] == {"ssid": "homenet", "key": "***"}
     assert out["config"]["mqtt"]["pass"] == "***"
     assert out["config"]["sys"] == {"device": {"name": "fake"}}

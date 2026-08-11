@@ -59,7 +59,7 @@ async def test_discover_tool_merges_without_network(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(discovery, "discover_mdns", fake_mdns)
     set_registry(DeviceRegistry(Config()))  # cloud disabled -> list_devices raises, handled
     try:
-        out = await shelly_discover.fn(timeout_s=0.0, use_cloud=False)
+        out = await shelly_discover(timeout_s=0.0, use_cloud=False)
     finally:
         set_registry(None)
     assert out["count"] == 1
@@ -76,7 +76,7 @@ async def test_discover_tool_handles_cloud_error(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(discovery, "discover_mdns", empty_mdns)
     set_registry(DeviceRegistry(Config()))  # cloud not configured -> BackendError swallowed
     try:
-        out = await shelly_discover.fn(timeout_s=0.0, use_cloud=True)
+        out = await shelly_discover(timeout_s=0.0, use_cloud=True)
     finally:
         set_registry(None)
     assert out["count"] == 0
