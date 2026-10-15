@@ -24,7 +24,12 @@ _MAX_SCHEDULES = 20
 _SHORTHANDS = frozenset(
     {"@yearly", "@annually", "@monthly", "@weekly", "@daily", "@midnight", "@hourly"}
 )
-_SUN_RE = re.compile(r"@(sunrise|sunset)(?:([+-])((?:\d+(?:\.\d+)?[hms]?)+))?", re.IGNORECASE)
+# Every segment except the last must end in a unit, so the split into segments is
+# unambiguous and the match runs in linear time (no nested optional quantifiers / ReDoS).
+_SUN_RE = re.compile(
+    r"@(sunrise|sunset)(?:([+-])((?:\d+(?:\.\d+)?[hms])*\d+(?:\.\d+)?[hms]?))?", re.IGNORECASE
+)
+_MAX_TIMESPEC_LEN = 512
 _OFFSET_SEGMENT_RE = re.compile(r"(\d+(?:\.\d+)?)([hms]?)")
 _UNIT_SECONDS = {"h": 3600, "m": 60, "s": 1, "": 1}
 _MAX_SUN_OFFSET_S = 12 * 3600
@@ -39,6 +44,8 @@ def _validate_timespec(timespec: str) -> str | None:
     (max ±12 h) and optional ``day month weekday`` fields. Field *values* are left to the
     device, which is the authority and reports its own error.
     """
+    if len(timespec) > _MAX_TIMESPEC_LEN:
+        return f"timespec is too long (max {_MAX_TIMESPEC_LEN} characters)"
     fields = timespec.split()
     if not fields:
         return "timespec is empty"

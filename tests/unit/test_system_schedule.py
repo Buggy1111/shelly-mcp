@@ -107,6 +107,17 @@ def test_validate_timespec_rejects_malformed(timespec: str, fragment: str) -> No
     assert err is not None and fragment in err
 
 
+def test_validate_timespec_is_linear_time_on_hostile_input() -> None:
+    """Regression: a nested optional quantifier made long digit runs backtrack exponentially."""
+    import time
+
+    start = time.perf_counter()
+    for hostile in ("@sunset+" + "1" * 5000 + "x", "@sunset+" + "1h" * 200 + "!"):
+        assert _validate_timespec(hostile[:500]) is not None
+    assert _validate_timespec("@sunset+" + "1" * 600) is not None  # length cap
+    assert time.perf_counter() - start < 0.5
+
+
 async def test_schedule_create_accepts_sunset(wire: Any) -> None:
     out = await shelly_schedule_create(
         device="dev",
