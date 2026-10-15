@@ -3,7 +3,7 @@
 All notable changes to `shelly-mcp` are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [0.1.3] — 2026-10-15
 
 ### Added
 - Schedules accept the full Gen2+ timespec grammar: 5/6/7-field cron, `@daily`-style
