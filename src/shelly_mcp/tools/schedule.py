@@ -3,7 +3,8 @@
 Schedules are automation: they live on the device and only exist over a local
 connection (the cloud API can't manage them — the backend raises UnsupportedOnCloud,
 surfaced as ``{"error": …}`` by the ``backend_errors`` decorator). Create validates the
-6-field cron timespec, the ≤20-per-device limit, and every call's method against the
+timespec grammar (cron 5/6/7 fields, @sunrise/@sunset±offset, shorthands), ≤5 calls,
+the ≤20-per-device limit, and every call's method against the
 control-method allowlist — a schedule must never become a deferred bypass of the
 confirm gates (no ``Shelly.FactoryReset`` at 3am, no ``Script.Eval``; see
 docs/03-SECURITY §5.3). Delete is destructive-gated; create/update are audited.
@@ -11,6 +12,7 @@ docs/03-SECURITY §5.3). Delete is destructive-gated; create/update are audited.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from shelly_mcp.app import backend_errors, confirm_refusal, execute_and_audit, get_registry, mcp
@@ -19,12 +21,57 @@ from shelly_mcp.methods import Classification, automation_allowed, classify
 _MAX_SCHEDULES = 20
 
 
+_SHORTHANDS = frozenset(
+    {"@yearly", "@annually", "@monthly", "@weekly", "@daily", "@midnight", "@hourly"}
+)
+_SUN_RE = re.compile(r"@(sunrise|sunset)(?:([+-])((?:\d+(?:\.\d+)?[hms]?)+))?", re.IGNORECASE)
+_OFFSET_SEGMENT_RE = re.compile(r"(\d+(?:\.\d+)?)([hms]?)")
+_UNIT_SECONDS = {"h": 3600, "m": 60, "s": 1, "": 1}
+_MAX_SUN_OFFSET_S = 12 * 3600
+_MAX_CALLS = 5
+
+
 def _validate_timespec(timespec: str) -> str | None:
-    """Return an error string if the 6-field cron timespec is malformed, else None."""
+    """Return an error string if the timespec is structurally malformed, else None.
+
+    Mirrors the Gen2+ Schedule grammar: a 5/6/7-field cron expression, a shorthand
+    (``@daily``…), ``@random:{…}``, or ``@sunrise``/``@sunset`` with an optional offset
+    (max ±12 h) and optional ``day month weekday`` fields. Field *values* are left to the
+    device, which is the authority and reports its own error.
+    """
     fields = timespec.split()
-    if len(fields) != 6:
+    if not fields:
+        return "timespec is empty"
+    head = fields[0]
+    if head.lower().startswith("@random:"):
+        return None
+    if head.lower() in _SHORTHANDS:
+        return None if len(fields) == 1 else f"'{head}' takes no further fields"
+    if head.startswith("@"):
+        sun = _SUN_RE.fullmatch(head)
+        if sun is None:
+            return (
+                f"unknown timespec shorthand '{head}' — use @sunrise/@sunset[+-offset], "
+                "@daily-style shorthands, or a 5/6/7-field cron string"
+            )
+        if sun.group(3):
+            seconds = sum(
+                float(num) * _UNIT_SECONDS[unit]
+                for num, unit in _OFFSET_SEGMENT_RE.findall(sun.group(3))
+            )
+            if seconds > _MAX_SUN_OFFSET_S:
+                hours = seconds / 3600
+                return f"sunrise/sunset offset is {hours:g} h — the device allows max ±12 h"
+        if len(fields) not in (1, 4):
+            return (
+                f"'{head}' may be followed only by 'day month weekday' (3 fields), "
+                f"got {len(fields) - 1}"
+            )
+        return None
+    if len(fields) not in (5, 6, 7):
         return (
-            "timespec must be a 6-field cron string (sec min hour day month dow), "
+            "timespec must be a cron string with 5 (min hour day month dow), "
+            "6 (sec min hour day month dow) or 7 (… year) fields, "
             f"got {len(fields)} fields"
         )
     return None
@@ -34,6 +81,8 @@ def _validate_calls(calls: list[dict[str, Any]]) -> str | None:
     """Each scheduled call must be an allowlisted device-control method (no gate bypass)."""
     if not calls or not isinstance(calls, list):
         return "calls must be a non-empty list of {method, params} objects"
+    if len(calls) > _MAX_CALLS:
+        return f"a schedule can hold at most {_MAX_CALLS} calls (got {len(calls)}) — split it"
     for call in calls:
         method = call.get("method") if isinstance(call, dict) else None
         if not isinstance(method, str):
@@ -64,9 +113,13 @@ async def shelly_schedule_list(device: str) -> dict[str, Any]:
 async def shelly_schedule_create(
     device: str, timespec: str, calls: list[dict[str, Any]], enable: bool = True
 ) -> dict[str, Any]:
-    """Create a schedule: ``timespec`` 6-field cron, ``calls`` list of {method, params}.
+    """Create a schedule: ``timespec`` + ``calls`` (1-5 × {method, params}).
 
-    Validates the timespec, the ≤20-per-device limit, and each call's method. Audit-logged.
+    ``timespec``: cron ``"sec min hour day month dow"`` (e.g. ``"0 0 22 * * MON-THU"``; 5 or 7
+    fields also accepted), a shorthand (``@daily``), or sun-relative ``"@sunset"``,
+    ``"@sunset+30m"``, ``"@sunrise-1h * * MON-FRI"`` (offset max ±12 h; the device needs its
+    location set). Validates the timespec, ≤5 calls, the ≤20-per-device limit, and each
+    call's method. Audit-logged.
     """
     if (err := _validate_timespec(timespec)) is not None:
         return {"error": err}

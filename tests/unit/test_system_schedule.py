@@ -5,7 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from shelly_mcp.tools.schedule import (
+    _validate_timespec,
     shelly_schedule_create,
     shelly_schedule_delete,
     shelly_schedule_list,
@@ -60,7 +63,63 @@ async def test_schedule_create_validates_timespec(wire: Any) -> None:
         device="dev", timespec="0 0 22", calls=[{"method": "Switch.Set", "params": {"on": False}}]
     )
     assert "error" in out
-    assert "6-field" in out["error"]
+    assert "5 (min hour" in out["error"]
+
+
+@pytest.mark.parametrize(
+    "timespec",
+    [
+        "0 22 * * *",  # 5 fields (seconds default 0)
+        "0 0 22 * * MON,TUE,WED,THU",
+        "0 0 22 * * * 2027",  # 7 fields (year)
+        "@daily",
+        "@sunset",
+        "@sunrise+30m",
+        "@sunset-1h30m",
+        "@SUNSET+90",  # bare number = seconds, case-insensitive
+        "@sunrise * * MON-FRI",
+        "@sunset+15m * 6-8 *",
+        "@sunset+12h",
+        "@sunset+02h00m",  # the form the device itself reports back
+        '@random:{"from":"0 0 18 * * *","to":"0 0 20 * * *","number":2}',
+    ],
+)
+def test_validate_timespec_accepts_device_grammar(timespec: str) -> None:
+    assert _validate_timespec(timespec) is None
+
+
+@pytest.mark.parametrize(
+    ("timespec", "fragment"),
+    [
+        ("", "empty"),
+        ("0 0 22", "got 3 fields"),
+        ("0 0 22 * * * 2027 x", "got 8 fields"),
+        ("@sunset+13h", "max ±12 h"),
+        ("@sunset+12h1s", "max ±12 h"),
+        ("@sunset * MON", "got 2"),
+        ("@sunset+1x", "unknown timespec"),
+        ("@noon", "unknown timespec"),
+        ("@daily *", "takes no further"),
+    ],
+)
+def test_validate_timespec_rejects_malformed(timespec: str, fragment: str) -> None:
+    err = _validate_timespec(timespec)
+    assert err is not None and fragment in err
+
+
+async def test_schedule_create_accepts_sunset(wire: Any) -> None:
+    out = await shelly_schedule_create(
+        device="dev",
+        timespec="@sunset+30m",
+        calls=[{"method": "Switch.Set", "params": {"on": True}}],
+    )
+    assert "error" not in out
+
+
+async def test_schedule_create_rejects_more_than_five_calls(wire: Any) -> None:
+    calls = [{"method": "Switch.Set", "params": {"id": 0, "on": False}}] * 6
+    out = await shelly_schedule_create(device="dev", timespec="0 0 22 * * *", calls=calls)
+    assert "at most 5 calls" in out["error"]
 
 
 async def test_schedule_create_rejects_destructive_call(wire: Any) -> None:
@@ -110,7 +169,8 @@ async def test_schedule_create_ok(wire: Any) -> None:
 async def test_schedule_create_enforces_max(wire: Any, gen2_status: dict[str, Any]) -> None:
     gen2_status["_schedules"] = [{"id": i} for i in range(20)]  # already at the cap
     out = await shelly_schedule_create(
-        device="dev", timespec="0 0 22 * * *",
+        device="dev",
+        timespec="0 0 22 * * *",
         calls=[{"method": "Switch.Set", "params": {"on": False}}],
     )
     assert "error" in out

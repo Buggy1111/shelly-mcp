@@ -43,7 +43,7 @@
 | Tool | Annot. | Inputs | Returns |
 |---|---|---|---|
 | `shelly_schedule_list` | RO | `device` | list of schedules (id, enable, timespec, calls) |
-| `shelly_schedule_create` | I | `device`, `timespec: str` (6-field cron, int DOW 0-6), `calls: list[{method, params}]`, `enable?: bool=true` | `{id}`. Validates ≤20/device, validates timespec, and every call against the **control-method allowlist** (Switch/Light/RGB/RGBW/CCT/Cover) — a schedule can't smuggle `FactoryReset` or `Script.Eval` past the confirm gates (03-SECURITY §5.3) |
+| `shelly_schedule_create` | I | `device`, `timespec: str` (cron 5/6/7 fields, `@daily`-style shorthands, `@sunrise`/`@sunset`±offset ≤12 h + optional `day month dow`), `calls: list[{method, params}]` (1–5), `enable?: bool=true` | `{id}`. Validates ≤20/device, ≤5 calls, timespec grammar, and every call against the **control-method allowlist** (Switch/Light/RGB/RGBW/CCT/Cover) — a schedule can't smuggle `FactoryReset` or `Script.Eval` past the confirm gates (03-SECURITY §5.3) |
 | `shelly_schedule_update` | I | `device`, `id: int`, …fields | `{ok}` |
 | `shelly_schedule_delete` | D, ⚠️ | `device`, `id: int`, `confirm: bool` | `{ok}` |
 

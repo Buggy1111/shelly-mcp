@@ -3,6 +3,18 @@
 All notable changes to `shelly-mcp` are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- Schedules accept the full Gen2+ timespec grammar: 5/6/7-field cron, `@daily`-style
+  shorthands, `@random:{…}`, and **sunrise/sunset** (`@sunset`, `@sunrise+30m`,
+  `@sunset-1h * * MON-FRI`; offset max ±12 h — the device needs its location set).
+  Previously only 6-field cron passed validation. Verified live on a Gen2 RGBW device.
+
+### Fixed
+- `shelly_schedule_create` / `_update` reject more than 5 calls per schedule (the device
+  limit) with a clear error instead of a device-side failure.
+
 ## [0.1.2] — 2026-06-10
 
 ### Fixed
