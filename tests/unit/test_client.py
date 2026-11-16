@@ -124,6 +124,22 @@ async def test_config_name_maps_to_cloud_id() -> None:
     assert client.posts[-1][1]["id"] == "3ce90ed7c30e"
 
 
+async def test_get_backend_routes_local_by_id_and_alias() -> None:
+    # Regression: a device with a LAN ip must route locally whether it's addressed by its
+    # config name, an alias, or its cloud id — not only the exact config key. That gap
+    # silently forced id/alias-addressed calls onto the cloud (full API + no rate limit lost).
+    from shelly_mcp.config import DeviceConfig
+
+    config = Config(
+        devices={"led": DeviceConfig(id="3076f53b1d54", ip="192.168.0.108", aliases=["pásek"])}
+    )
+    reg = DeviceRegistry(config, cloud_client=FakeCloudClient())  # type: ignore[arg-type]
+    sentinel = object()
+    reg._local_backends["led"] = sentinel  # type: ignore[assignment]  # skip the network probe
+    for key in ("led", "3076f53b1d54", "pásek"):
+        assert await reg.get_backend(key) is sentinel, f"{key!r} must route to the local backend"
+
+
 async def test_aliases_and_location_resolve_and_overlay() -> None:
     from shelly_mcp.config import DeviceConfig
 

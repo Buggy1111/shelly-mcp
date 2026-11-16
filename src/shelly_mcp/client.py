@@ -137,15 +137,38 @@ class DeviceRegistry:
         return backend
 
     # --------------------------------------------------------------- resolve
+    def _resolve_config(self, device: str) -> tuple[str | None, DeviceConfig | None]:
+        """Resolve a device reference to its config entry, returning ``(name, cfg)``.
+
+        ``config.devices`` is keyed by friendly name, but callers legitimately address a
+        device by its **cloud id** or an **alias** too — those must still resolve to the
+        configured entry so they route locally. (Matching only the exact config key was
+        the bug that silently forced id/alias-addressed calls onto the cloud.) Returns
+        ``(None, None)`` for an unknown or cloud-only device.
+        """
+        cfg = self._config.devices.get(device)
+        if cfg is not None:
+            return device, cfg
+        # alias -> id (``_name_to_id`` includes aliases) or a bare cloud id -> name
+        dev_id = self._name_to_id.get(device, device)
+        meta = self._id_meta.get(dev_id)
+        if meta is not None:
+            name = meta[0]
+            cfg = self._config.devices.get(name)
+            if cfg is not None:
+                return name, cfg
+        return None, None
+
     async def get_backend(self, device: str) -> Backend:
         """Return a backend for ``device`` — local-first, cloud fallback.
 
-        A device configured with a LAN ip is reached locally (full-featured); anything
-        else falls back to Shelly Cloud (control + status only).
+        A device configured with a LAN ip is reached locally (full-featured) whether it
+        is addressed by its config name, an alias, or its cloud id; anything else falls
+        back to Shelly Cloud (control + status only).
         """
-        cfg = self._config.devices.get(device)
-        if cfg is not None and cfg.ip:
-            return await self._build_local(device, cfg)
+        name, cfg = self._resolve_config(device)
+        if name is not None and cfg is not None and cfg.ip:
+            return await self._build_local(name, cfg)
         dev_id = self._name_to_id.get(device, device)
         client = self._ensure_cloud()
         return CloudBackend(client, dev_id, self._friendly_name(dev_id))
